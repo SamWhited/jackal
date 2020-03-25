@@ -1,6 +1,6 @@
 module github.com/ortuman/jackal
 
-go 1.14
+go 1.13
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.3.3
@@ -27,5 +27,4 @@ require (
 	golang.org/x/text v0.3.0
 	google.golang.org/grpc v1.28.0 // indirect
 	gopkg.in/yaml.v2 v2.2.7
-
 )
