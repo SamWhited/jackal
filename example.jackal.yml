@@ -101,3 +101,9 @@ s2s:
     transport:
       bind_addr: 0.0.0.0
       port: 5269
+
+cluster:
+  type: etcd
+  endpoints:
+    -
+
