@@ -5,11 +5,11 @@
 
 package cluster
 
-import _ "go.etcd.io/etcd/clientv3"
-
 type Candidate interface {
-	CheckLeadership() (isLeader bool, err error)
+	IsLeader() bool
 
 	Elect() error
 	Resign() error
+
+	Close() error
 }
