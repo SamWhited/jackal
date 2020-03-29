@@ -19,6 +19,7 @@ func TestClusterConfig(t *testing.T) {
   type: etcd
   etcd:
     endpoints: [http://127.0.0.1:2378, http://127.0.0.1:2379]
+  port: 7898
 `
 
 	err := yaml.Unmarshal([]byte(etcdCfg), &cfg)

@@ -115,7 +115,7 @@ func (m *memberList) refreshMembers(ctx context.Context, localMember Member) err
 
 func (m *memberList) putMember(ctx context.Context, member Member, ttlInSeconds int64) error {
 	key := fmt.Sprintf("%s/%s", memberListPrefix, member.AllocationID)
-	val := fmt.Sprintf("%s:%d", member.Host, member.Port)
+	val := fmt.Sprintf("%s:%s", member.Host, member.Port)
 	return m.kv.Put(ctx, key, val, ttlInSeconds)
 }
 
