@@ -156,13 +156,14 @@ func (a *Application) Run() error {
 	if err != nil {
 		return err
 	}
-	if err := repContainer.Presences().ClearPresences(context.Background()); err != nil {
-		return err
-	}
 	// initialize cluster
 	if cfg.Cluster != nil {
 		_, err := cluster.New(cfg.Cluster)
 		if err != nil {
+			return err
+		}
+	} else {
+		if err := repContainer.Presences().ClearPresences(context.Background()); err != nil {
 			return err
 		}
 	}
