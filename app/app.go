@@ -21,6 +21,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ortuman/jackal/cluster"
+
 	"github.com/google/uuid"
 	"github.com/ortuman/jackal/c2s"
 	c2srouter "github.com/ortuman/jackal/c2s/router"
@@ -156,6 +158,13 @@ func (a *Application) Run() error {
 	}
 	if err := repContainer.Presences().ClearPresences(context.Background()); err != nil {
 		return err
+	}
+	// initialize cluster
+	if cfg.Cluster != nil {
+		_, err := cluster.New(cfg.Cluster)
+		if err != nil {
+			return err
+		}
 	}
 
 	// initialize hosts

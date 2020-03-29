@@ -10,6 +10,4 @@ type Candidate interface {
 
 	Elect() error
 	Resign() error
-
-	Close() error
 }

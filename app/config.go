@@ -9,6 +9,8 @@ import (
 	"bytes"
 	"io/ioutil"
 
+	"github.com/ortuman/jackal/cluster"
+
 	"github.com/ortuman/jackal/c2s"
 	"github.com/ortuman/jackal/component"
 	"github.com/ortuman/jackal/module"
@@ -39,6 +41,7 @@ type Config struct {
 	Components component.Config `yaml:"components"`
 	C2S        []c2s.Config     `yaml:"c2s"`
 	S2S        *s2s.Config      `yaml:"s2s"`
+	Cluster    *cluster.Config  `yaml:"cluster"`
 }
 
 // FromFile loads default global configuration from a specified file.

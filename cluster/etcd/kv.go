@@ -24,25 +24,19 @@ func (k *KV) Put(ctx context.Context, key string, value string, ttlInSeconds int
 	return err
 }
 
-func (k *KV) Get(ctx context.Context, key string) (string, error) {
-	resp, err := k.cli.Get(ctx, key)
-	if err != nil {
-		return "", err
-	}
-	if len(resp.Kvs) == 0 {
-		return "", nil
-	}
-	return string(resp.Kvs[0].Value), nil
+func (k *KV) Del(ctx context.Context, key string) error {
+	_, err := k.cli.Delete(ctx, key)
+	return err
 }
 
-func (k *KV) GetPrefix(ctx context.Context, prefix string) ([]string, error) {
+func (k *KV) GetPrefix(ctx context.Context, prefix string) (map[string]string, error) {
 	resp, err := k.cli.Get(ctx, prefix, v3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
-	var values []string
+	values := make(map[string]string, len(resp.Kvs))
 	for _, kv := range resp.Kvs {
-		values = append(values, string(kv.Value))
+		values[string(kv.Key)] = string(kv.Value)
 	}
 	return values, nil
 }
