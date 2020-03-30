@@ -12,6 +12,8 @@ import (
 	"net"
 	"strconv"
 
+	"github.com/ortuman/jackal/log"
+
 	"github.com/ortuman/jackal/cluster/etcd"
 )
 
@@ -66,7 +68,11 @@ func (c *Cluster) shutdown() error {
 	if err := c.MemberList.Leave(); err != nil {
 		return err
 	}
-	return c.Candidate.Resign()
+	if err := c.Candidate.Resign(); err != nil {
+		return err
+	}
+	log.Infof("cluster: shutted down successfully")
+	return nil
 }
 
 func getLocalIP() (string, error) {

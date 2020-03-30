@@ -83,6 +83,9 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 	c.ID = p.ID
+	if len(c.ID) == 0 {
+		return errors.New("s2s.Config: must specify server identifier")
+	}
 	c.DialbackSecret = p.DialbackSecret
 	if len(c.DialbackSecret) == 0 {
 		return errors.New("s2s.Config: must specify a dialback secret")

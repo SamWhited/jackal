@@ -380,6 +380,5 @@ func (a *Application) doShutdown(ctx context.Context) error {
 		return err
 	}
 	log.Unset()
-
 	return nil
 }

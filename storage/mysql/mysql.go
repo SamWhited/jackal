@@ -78,6 +78,7 @@ func (c *mySQLContainer) Shutdown(ctx context.Context) error {
 	c.doneCh <- ch
 	select {
 	case <-ch:
+		log.Infof("mysql: shutted down successfully")
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()

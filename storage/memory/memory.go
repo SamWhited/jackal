@@ -8,6 +8,8 @@ package memorystorage
 import (
 	"context"
 
+	"github.com/ortuman/jackal/log"
+
 	"github.com/ortuman/jackal/storage/repository"
 )
 
@@ -47,6 +49,9 @@ func (c *memoryContainer) BlockList() repository.BlockList { return c.blockList 
 func (c *memoryContainer) PubSub() repository.PubSub       { return c.pubSub }
 func (c *memoryContainer) Offline() repository.Offline     { return c.offline }
 
-func (c *memoryContainer) Shutdown(_ context.Context) error { return nil }
+func (c *memoryContainer) Shutdown(_ context.Context) error {
+	log.Infof("memorystorage: shutted down successfully")
+	return nil
+}
 
 func (c *memoryContainer) IsClusterCompatible() bool { return false }
