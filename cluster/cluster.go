@@ -6,6 +6,7 @@
 package cluster
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -17,11 +18,9 @@ import (
 type Cluster struct {
 	Candidate
 	MemberList
-
-	localMember Member
 }
 
-func New(config *Config) (*Cluster, error) {
+func New(config *Config, allocationID string) (*Cluster, error) {
 	var candidate Candidate
 	var kv KV
 	var err error
@@ -39,11 +38,35 @@ func New(config *Config) (*Cluster, error) {
 	if err != nil {
 		return nil, err
 	}
+	localMember := Member{
+		AllocationID: allocationID,
+		Host:         localIP,
+		Port:         strconv.Itoa(config.Port),
+	}
 	return &Cluster{
-		localMember: Member{Host: localIP, Port: strconv.Itoa(config.Port)},
-		Candidate:   candidate,
-		MemberList:  newMemberList(kv, config.AliveTTL),
+		Candidate:  candidate,
+		MemberList: newMemberList(kv, localMember, config.AliveTTL),
 	}, nil
+}
+
+func (c *Cluster) Shutdown(ctx context.Context) error {
+	ch := make(chan error)
+	go func() {
+		ch <- c.shutdown()
+	}()
+	select {
+	case err := <-ch:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (c *Cluster) shutdown() error {
+	if err := c.MemberList.Leave(); err != nil {
+		return err
+	}
+	return c.Candidate.Resign()
 }
 
 func getLocalIP() (string, error) {

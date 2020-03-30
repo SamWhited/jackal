@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -19,45 +20,47 @@ import (
 const (
 	memberListOpTimeout = time.Second * 3
 
-	memberListPrefix = "jackal/memberlist"
+	memberListPrefix = "jackal/memberlist/"
 )
 
 type MemberList interface {
-	Join(localMember Member) error
+	Join() error
 	Leave() error
 
 	Members() Members
 }
 
 type memberList struct {
-	kv       KV
-	aliveTTL time.Duration
-	closeCh  chan chan bool
-	joined   int32
-	mu       sync.RWMutex
-	members  Members
+	kv          KV
+	localMember Member
+	aliveTTL    time.Duration
+	closeCh     chan chan bool
+	joined      int32
+	mu          sync.RWMutex
+	members     Members
 }
 
-func newMemberList(kv KV, aliveTTL time.Duration) *memberList {
+func newMemberList(kv KV, localMember Member, aliveTTL time.Duration) *memberList {
 	return &memberList{
-		kv:       kv,
-		aliveTTL: aliveTTL,
-		closeCh:  make(chan chan bool),
+		kv:          kv,
+		localMember: localMember,
+		aliveTTL:    aliveTTL,
+		closeCh:     make(chan chan bool),
 	}
 }
 
-func (m *memberList) Join(localMember Member) error {
+func (m *memberList) Join() error {
 	if !atomic.CompareAndSwapInt32(&m.joined, 0, 1) {
 		return nil // already joined
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), memberListOpTimeout)
 	defer cancel()
 
-	if err := m.refreshMembers(ctx, localMember); err != nil {
+	if err := m.refreshMembers(ctx); err != nil {
 		atomic.StoreInt32(&m.joined, 0)
 		return err
 	}
-	go m.loop(localMember)
+	go m.loop()
 	return nil
 }
 
@@ -77,7 +80,7 @@ func (m *memberList) Members() Members {
 	return m.members
 }
 
-func (m *memberList) loop(localMember Member) {
+func (m *memberList) loop() {
 	tc := time.NewTicker((m.aliveTTL * 5) / 10)
 	defer tc.Stop()
 
@@ -85,7 +88,7 @@ func (m *memberList) loop(localMember Member) {
 		select {
 		case <-tc.C:
 			ctx, cancel := context.WithTimeout(context.Background(), memberListOpTimeout)
-			if err := m.refreshMembers(ctx, localMember); err != nil {
+			if err := m.refreshMembers(ctx); err != nil {
 				log.Warnf("cluster: failed to refresh member list: %v", err)
 			}
 			cancel()
@@ -97,9 +100,9 @@ func (m *memberList) loop(localMember Member) {
 	}
 }
 
-func (m *memberList) refreshMembers(ctx context.Context, localMember Member) error {
+func (m *memberList) refreshMembers(ctx context.Context) error {
 	// refresh local member
-	if err := m.putMember(ctx, localMember, int64(m.aliveTTL/time.Second)); err != nil {
+	if err := m.putMember(ctx, m.localMember, int64(m.aliveTTL/time.Second)); err != nil {
 		return err
 	}
 	// update member list
@@ -114,7 +117,7 @@ func (m *memberList) refreshMembers(ctx context.Context, localMember Member) err
 }
 
 func (m *memberList) putMember(ctx context.Context, member Member, ttlInSeconds int64) error {
-	key := fmt.Sprintf("%s/%s", memberListPrefix, member.AllocationID)
+	key := fmt.Sprintf("%s%s", memberListPrefix, member.AllocationID)
 	val := net.JoinHostPort(member.Host, member.Port)
 	return m.kv.Put(ctx, key, val, ttlInSeconds)
 }
@@ -132,7 +135,7 @@ func (m *memberList) getMembers(ctx context.Context) (Members, error) {
 		if err != nil {
 			return nil, err
 		}
-		m.AllocationID = k
+		m.AllocationID = strings.Replace(k, memberListPrefix, "", 1) // remove key prefix
 		m.Host = host
 		m.Port = port
 		members = append(members, m)

@@ -82,7 +82,7 @@ func (c *pgSQLContainer) BlockList() repository.BlockList { return c.blockList }
 func (c *pgSQLContainer) PubSub() repository.PubSub       { return c.pubSub }
 func (c *pgSQLContainer) Offline() repository.Offline     { return c.offline }
 
-func (c *pgSQLContainer) Close(ctx context.Context) error {
+func (c *pgSQLContainer) Shutdown(ctx context.Context) error {
 	ch := make(chan bool)
 	c.doneCh <- ch
 	select {

@@ -11,7 +11,6 @@ import (
 	"sync/atomic"
 
 	"github.com/ortuman/jackal/component"
-	"github.com/ortuman/jackal/log"
 	"github.com/ortuman/jackal/module"
 	"github.com/ortuman/jackal/router"
 	"github.com/ortuman/jackal/storage/repository"
@@ -65,12 +64,13 @@ func (c *C2S) Start() {
 }
 
 // Shutdown gracefully shuts down c2s manager.
-func (c *C2S) Shutdown(ctx context.Context) {
+func (c *C2S) Shutdown(ctx context.Context) error {
 	if atomic.CompareAndSwapUint32(&c.started, 1, 0) {
 		for _, srv := range c.servers {
 			if err := srv.shutdown(ctx); err != nil {
-				log.Error(err)
+				return err
 			}
 		}
 	}
+	return nil
 }

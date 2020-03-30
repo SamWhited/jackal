@@ -73,7 +73,7 @@ func (c *mySQLContainer) BlockList() repository.BlockList { return c.blockList }
 func (c *mySQLContainer) PubSub() repository.PubSub       { return c.pubSub }
 func (c *mySQLContainer) Offline() repository.Offline     { return c.offline }
 
-func (c *mySQLContainer) Close(ctx context.Context) error {
+func (c *mySQLContainer) Shutdown(ctx context.Context) error {
 	ch := make(chan bool)
 	c.doneCh <- ch
 	select {

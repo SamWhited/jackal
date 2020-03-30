@@ -63,17 +63,25 @@ type S2SRouter interface {
 	Route(ctx context.Context, stanza xmpp.Stanza, localDomain string) error
 }
 
-type router struct {
-	hosts *host.Hosts
-	c2s   C2SRouter
-	s2s   S2SRouter
+type ClusterRouter interface {
+	// Route routes a stanza applying server rules for handling XML stanzas.
+	// (https://xmpp.org/rfcs/rfc3921.html#rules)
+	Route(ctx context.Context, stanza xmpp.Stanza) error
 }
 
-func New(hosts *host.Hosts, c2sRouter C2SRouter, s2sRouter S2SRouter) (Router, error) {
+type router struct {
+	hosts         *host.Hosts
+	c2s           C2SRouter
+	s2s           S2SRouter
+	clusterRouter ClusterRouter
+}
+
+func New(hosts *host.Hosts, c2sRouter C2SRouter, s2sRouter S2SRouter, clusterRouter ClusterRouter) (Router, error) {
 	r := &router{
-		hosts: hosts,
-		c2s:   c2sRouter,
-		s2s:   s2sRouter,
+		hosts:         hosts,
+		c2s:           c2sRouter,
+		s2s:           s2sRouter,
+		clusterRouter: clusterRouter,
 	}
 	return r, nil
 }
@@ -114,5 +122,9 @@ func (r *router) route(ctx context.Context, stanza xmpp.Stanza, validateStanza b
 		}
 		return r.s2s.Route(ctx, stanza, r.hosts.DefaultHostName())
 	}
-	return r.c2s.Route(ctx, stanza, validateStanza)
+	err := r.c2s.Route(ctx, stanza, validateStanza)
+	if r.clusterRouter != nil && err == ErrNotAuthenticated {
+		return r.clusterRouter.Route(ctx, stanza)
+	}
+	return err
 }

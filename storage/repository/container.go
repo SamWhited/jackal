@@ -34,7 +34,7 @@ type Container interface {
 	Offline() Offline
 
 	// Close closes underlying storage resources, commonly shared across repositories.
-	Close(ctx context.Context) error
+	Shutdown(ctx context.Context) error
 
 	// IsClusterCompatible tells whether or not container instance can be safely used across multiple cluster nodes.
 	IsClusterCompatible() bool

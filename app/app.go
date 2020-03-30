@@ -21,6 +21,10 @@ import (
 	"syscall"
 	"time"
 
+	clusterrouter "github.com/ortuman/jackal/cluster/router"
+
+	"github.com/ortuman/jackal/storage/repository"
+
 	"github.com/ortuman/jackal/cluster"
 
 	"github.com/google/uuid"
@@ -70,6 +74,8 @@ type Application struct {
 	output           io.Writer
 	args             []string
 	logger           log.Logger
+	repContainer     repository.Container
+	cluster          *cluster.Cluster
 	router           router.Router
 	mods             *module.Modules
 	comps            *component.Components
@@ -152,18 +158,18 @@ func (a *Application) Run() error {
 	a.printLogo(allocID)
 
 	// initialize storage
-	repContainer, err := storage.New(&cfg.Storage)
+	a.repContainer, err = storage.New(&cfg.Storage)
 	if err != nil {
 		return err
 	}
 	// initialize cluster
 	if cfg.Cluster != nil {
-		_, err := cluster.New(cfg.Cluster)
+		a.cluster, err = cluster.New(cfg.Cluster, allocID)
 		if err != nil {
 			return err
 		}
 	} else {
-		if err := repContainer.Presences().ClearPresences(context.Background()); err != nil {
+		if err := a.repContainer.Presences().ClearPresences(context.Background()); err != nil {
 			return err
 		}
 	}
@@ -174,23 +180,27 @@ func (a *Application) Run() error {
 		return err
 	}
 	// initialize router
+	var clusterRouter router.ClusterRouter
+	if a.cluster != nil {
+		clusterRouter = clusterrouter.New(a.cluster)
+	}
 	var s2sRouter router.S2SRouter
-
 	if cfg.S2S != nil {
 		a.s2sOutProvider = s2s.NewOutProvider(cfg.S2S, hosts)
 		s2sRouter = s2srouter.New(a.s2sOutProvider)
 	}
 	a.router, err = router.New(
 		hosts,
-		c2srouter.New(repContainer.User(), repContainer.BlockList()),
+		c2srouter.New(a.repContainer.User(), a.repContainer.BlockList()),
 		s2sRouter,
+		clusterRouter,
 	)
 	if err != nil {
 		return err
 	}
 
 	// initialize modules & components...
-	a.mods = module.New(&cfg.Modules, a.router, repContainer, allocID)
+	a.mods = module.New(&cfg.Modules, a.router, a.repContainer, allocID)
 	a.comps = component.New(&cfg.Components, a.mods.DiscoInfo)
 
 	// start serving s2s...
@@ -202,7 +212,7 @@ func (a *Application) Run() error {
 		a.s2s.Start()
 	}
 	// start serving c2s...
-	a.c2s, err = c2s.New(cfg.C2S, a.mods, a.comps, a.router, repContainer.User(), repContainer.BlockList())
+	a.c2s, err = c2s.New(cfg.C2S, a.mods, a.comps, a.router, a.repContainer.User(), a.repContainer.BlockList())
 	if err != nil {
 		return err
 	}
@@ -342,20 +352,34 @@ func (a *Application) doShutdown(ctx context.Context) error {
 			return err
 		}
 	}
-	a.c2s.Shutdown(ctx)
-
+	if err := a.c2s.Shutdown(ctx); err != nil {
+		return err
+	}
+	if a.s2s != nil {
+		if outProvider := a.s2sOutProvider; outProvider != nil {
+			if err := outProvider.Shutdown(ctx); err != nil {
+				return err
+			}
+		}
+		if err := a.s2s.Shutdown(ctx); err != nil {
+			return err
+		}
+	}
 	if err := a.comps.Shutdown(ctx); err != nil {
 		return err
 	}
 	if err := a.mods.Shutdown(ctx); err != nil {
 		return err
 	}
-
-	if outProvider := a.s2sOutProvider; outProvider != nil {
-		if err := outProvider.Shutdown(ctx); err != nil {
+	if a.cluster != nil {
+		if err := a.cluster.Shutdown(ctx); err != nil {
 			return err
 		}
 	}
+	if err := a.repContainer.Shutdown(ctx); err != nil {
+		return err
+	}
 	log.Unset()
+
 	return nil
 }

@@ -9,7 +9,6 @@ import (
 	"context"
 	"sync/atomic"
 
-	"github.com/ortuman/jackal/log"
 	"github.com/ortuman/jackal/module"
 	"github.com/ortuman/jackal/router"
 )
@@ -55,10 +54,11 @@ func (s *S2S) Start() {
 }
 
 // Shutdown gracefully shuts down s2s manager.
-func (s *S2S) Shutdown(ctx context.Context) {
+func (s *S2S) Shutdown(ctx context.Context) error {
 	if atomic.CompareAndSwapUint32(&s.started, 1, 0) {
 		if err := s.srv.shutdown(ctx); err != nil {
-			log.Error(err)
+			return err
 		}
 	}
+	return nil
 }
