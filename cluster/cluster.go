@@ -70,7 +70,7 @@ func (c *Cluster) shutdown() error {
 	if err := c.Candidate.Resign(); err != nil {
 		return err
 	}
-	log.Infof("cluster: shutted down successfully")
+	log.Infof("successfully shutted down")
 	return nil
 }
 

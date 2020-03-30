@@ -37,7 +37,7 @@ func New() (*Storage, error) {
 }
 
 func (c *Storage) Shutdown(_ context.Context) error {
-	log.Infof("memorystorage: shutted down successfully")
+	log.Infof("successfully shutted down")
 	return nil
 }
 
