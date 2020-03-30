@@ -14,19 +14,19 @@ import (
 	"github.com/ortuman/jackal/xmpp"
 )
 
-type mySQLPrivate struct {
+type Private struct {
 	*mySQLStorage
 	pool *pool.BufferPool
 }
 
-func newPrivate(db *sql.DB) *mySQLPrivate {
-	return &mySQLPrivate{
+func newPrivate(db *sql.DB) *Private {
+	return &Private{
 		mySQLStorage: newStorage(db),
 		pool:         pool.NewBufferPool(),
 	}
 }
 
-func (s *mySQLPrivate) UpsertPrivateXML(ctx context.Context, privateXML []xmpp.XElement, namespace string, username string) error {
+func (s *Private) UpsertPrivateXML(ctx context.Context, privateXML []xmpp.XElement, namespace string, username string) error {
 	buf := s.pool.Get()
 	defer s.pool.Put(buf)
 	for _, elem := range privateXML {
@@ -45,7 +45,7 @@ func (s *mySQLPrivate) UpsertPrivateXML(ctx context.Context, privateXML []xmpp.X
 	return err
 }
 
-func (s *mySQLPrivate) FetchPrivateXML(ctx context.Context, namespace string, username string) ([]xmpp.XElement, error) {
+func (s *Private) FetchPrivateXML(ctx context.Context, namespace string, username string) ([]xmpp.XElement, error) {
 	q := sq.Select("data").
 		From("private_storage").
 		Where(sq.And{sq.Eq{"username": username}, sq.Eq{"namespace": namespace}})

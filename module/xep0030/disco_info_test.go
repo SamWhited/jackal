@@ -10,13 +10,14 @@ import (
 	"crypto/tls"
 	"testing"
 
+	"github.com/ortuman/jackal/storage"
+
 	"github.com/ortuman/jackal/router/host"
 
 	c2srouter "github.com/ortuman/jackal/c2s/router"
 	"github.com/ortuman/jackal/module/xep0004"
 	"github.com/ortuman/jackal/router"
 	memorystorage "github.com/ortuman/jackal/storage/memory"
-	"github.com/ortuman/jackal/storage/repository"
 	"github.com/ortuman/jackal/stream"
 	"github.com/ortuman/jackal/xmpp"
 	"github.com/ortuman/jackal/xmpp/jid"
@@ -196,13 +197,14 @@ func TestXEP0030_Provider(t *testing.T) {
 	require.Equal(t, xmpp.ErrItemNotFound.Error(), elem.Error().Elements().All()[0].Name())
 }
 
-func setupTest(domain string) (router.Router, repository.Roster) {
+func setupTest(domain string) (router.Router, storage.Roster) {
 	hosts, _ := host.New([]host.Config{{Name: domain, Certificate: tls.Certificate{}}})
-	rosterRep := memorystorage.NewRoster()
+	rosterSt := memorystorage.NewRoster()
 	r, _ := router.New(
 		hosts,
 		c2srouter.New(memorystorage.NewUser(), memorystorage.NewBlockList()),
 		nil,
+		nil,
 	)
-	return r, rosterRep
+	return r, rosterSt
 }

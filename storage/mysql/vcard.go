@@ -14,18 +14,18 @@ import (
 	"github.com/ortuman/jackal/xmpp"
 )
 
-type mySQLVCard struct {
+type VCard struct {
 	*mySQLStorage
 }
 
-func newVCard(db *sql.DB) *mySQLVCard {
-	return &mySQLVCard{
+func newVCard(db *sql.DB) *VCard {
+	return &VCard{
 		mySQLStorage: newStorage(db),
 	}
 }
 
 // UpsertVCard inserts a new vCard element into storage, or updates it in case it's been previously inserted.
-func (s *mySQLVCard) UpsertVCard(ctx context.Context, vCard xmpp.XElement, username string) error {
+func (s *VCard) UpsertVCard(ctx context.Context, vCard xmpp.XElement, username string) error {
 	rawXML := vCard.String()
 	q := sq.Insert("vcards").
 		Columns("username", "vcard", "updated_at", "created_at").
@@ -37,7 +37,7 @@ func (s *mySQLVCard) UpsertVCard(ctx context.Context, vCard xmpp.XElement, usern
 }
 
 // FetchVCard retrieves from storage a vCard element associated to a given user.
-func (s *mySQLVCard) FetchVCard(ctx context.Context, username string) (xmpp.XElement, error) {
+func (s *VCard) FetchVCard(ctx context.Context, username string) (xmpp.XElement, error) {
 	var vCard string
 
 	q := sq.Select("vcard").From("vcards").Where(sq.Eq{"username": username})

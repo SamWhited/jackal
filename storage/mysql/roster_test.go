@@ -304,9 +304,9 @@ func TestMySQLStorageFetchRosterGroups(t *testing.T) {
 	require.Equal(t, errMySQLStorage, err)
 }
 
-func newRosterMock() (*mySQLRoster, sqlmock.Sqlmock) {
+func newRosterMock() (*Roster, sqlmock.Sqlmock) {
 	s, sqlMock := newStorageMock()
-	return &mySQLRoster{
+	return &Roster{
 		mySQLStorage: s,
 	}, sqlMock
 }

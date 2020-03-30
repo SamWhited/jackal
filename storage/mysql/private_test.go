@@ -92,9 +92,9 @@ func TestMySQLStorageFetchPrivateXML(t *testing.T) {
 	require.Equal(t, 0, len(elems))
 }
 
-func newPrivateMock() (*mySQLPrivate, sqlmock.Sqlmock) {
+func newPrivateMock() (*Private, sqlmock.Sqlmock) {
 	s, sqlMock := newStorageMock()
-	return &mySQLPrivate{
+	return &Private{
 		mySQLStorage: s,
 		pool:         pool.NewBufferPool(),
 	}, sqlMock

@@ -10,10 +10,11 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/ortuman/jackal/storage"
+
 	"github.com/ortuman/jackal/component"
 	"github.com/ortuman/jackal/module"
 	"github.com/ortuman/jackal/router"
-	"github.com/ortuman/jackal/storage/repository"
 	"github.com/pkg/errors"
 )
 
@@ -42,13 +43,13 @@ type C2S struct {
 }
 
 // New returns a new instance of a c2s connection manager.
-func New(configs []Config, mods *module.Modules, comps *component.Components, router router.Router, userRep repository.User, blockListRep repository.BlockList) (*C2S, error) {
+func New(configs []Config, mods *module.Modules, comps *component.Components, router router.Router, userSt storage.User, blockListSt storage.BlockList) (*C2S, error) {
 	if len(configs) == 0 {
 		return nil, errors.New("at least one c2s configuration is required")
 	}
 	c := &C2S{servers: make(map[string]c2sServer)}
 	for _, config := range configs {
-		srv := createC2SServer(&config, mods, comps, router, userRep, blockListRep)
+		srv := createC2SServer(&config, mods, comps, router, userSt, blockListSt)
 		c.servers[config.ID] = srv
 	}
 	return c, nil

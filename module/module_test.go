@@ -94,11 +94,12 @@ func setupModules(t *testing.T) *Modules {
 
 	hosts, _ := host.New([]host.Config{{Name: "jackal.im", Certificate: tls.Certificate{}}})
 
-	rep, _ := storage.New(&storage.Config{Type: storage.Memory})
+	st, _ := storage.New(&storage.Config{Type: storage.Memory})
 	r, _ := router.New(
 		hosts,
-		c2srouter.New(rep.User(), rep.BlockList()),
+		c2srouter.New(st.User, st.BlockList),
+		nil,
 		nil,
 	)
-	return New(&config, r, rep, "alloc-1234")
+	return New(&config, r, st, "alloc-1234")
 }

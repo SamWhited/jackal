@@ -466,9 +466,9 @@ func TestPgSQLDeletePubSubNodeSubscription(t *testing.T) {
 	require.Equal(t, errGeneric, err)
 }
 
-func newPubSubMock() (*pgSQLPubSub, sqlmock.Sqlmock) {
+func newPubSubMock() (*PubSub, sqlmock.Sqlmock) {
 	s, sqlMock := newStorageMock()
-	return &pgSQLPubSub{
+	return &PubSub{
 		pgSQLStorage: s,
 	}, sqlMock
 }

@@ -20,8 +20,8 @@ import (
 	"github.com/ortuman/jackal/module"
 	"github.com/ortuman/jackal/router"
 	"github.com/ortuman/jackal/router/host"
+	"github.com/ortuman/jackal/storage"
 	memorystorage "github.com/ortuman/jackal/storage/memory"
-	"github.com/ortuman/jackal/storage/repository"
 	"github.com/ortuman/jackal/xmpp"
 	"github.com/stretchr/testify/require"
 )
@@ -154,7 +154,7 @@ var (
 func (a fakeAddr) Network() string { return "net" }
 func (a fakeAddr) String() string  { return "str" }
 
-func setupTest(domain string) (router.Router, repository.User, repository.BlockList) {
+func setupTest(domain string) (router.Router, storage.User, storage.BlockList) {
 	hosts, _ := host.New([]host.Config{{Name: domain, Certificate: tls.Certificate{}}})
 
 	userRep := memorystorage.NewUser()
@@ -162,6 +162,7 @@ func setupTest(domain string) (router.Router, repository.User, repository.BlockL
 	r, _ := router.New(
 		hosts,
 		c2srouter.New(userRep, blockListRep),
+		nil,
 		nil,
 	)
 	return r, userRep, blockListRep
@@ -210,20 +211,21 @@ func TestC2S_StartAndShutdown(t *testing.T) {
 
 func setupTestC2S(domain string) (*C2S, *fakeC2SServer) {
 	srv := newFakeC2SServer()
-	createC2SServer = func(_ *Config, _ *module.Modules, _ *component.Components, _ router.Router, _ repository.User, _ repository.BlockList) c2sServer {
+	createC2SServer = func(_ *Config, _ *module.Modules, _ *component.Components, _ router.Router, _ storage.User, _ storage.BlockList) c2sServer {
 		return srv
 	}
 
 	hosts, _ := host.New([]host.Config{{Name: domain, Certificate: tls.Certificate{}}})
 
-	userRep := memorystorage.NewUser()
-	blockListRep := memorystorage.NewBlockList()
+	userSt := memorystorage.NewUser()
+	blockListSt := memorystorage.NewBlockList()
 	r, _ := router.New(
 		hosts,
-		c2srouter.New(userRep, blockListRep),
+		c2srouter.New(userSt, blockListSt),
+		nil,
 		nil,
 	)
 
-	c2s, _ := New([]Config{{}}, &module.Modules{}, &component.Components{}, r, userRep, blockListRep)
+	c2s, _ := New([]Config{{}}, &module.Modules{}, &component.Components{}, r, userSt, blockListSt)
 	return c2s, srv
 }

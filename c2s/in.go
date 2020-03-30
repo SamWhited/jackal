@@ -20,7 +20,7 @@ import (
 	"github.com/ortuman/jackal/module"
 	"github.com/ortuman/jackal/router"
 	"github.com/ortuman/jackal/session"
-	"github.com/ortuman/jackal/storage/repository"
+	"github.com/ortuman/jackal/storage"
 	"github.com/ortuman/jackal/stream"
 	"github.com/ortuman/jackal/transport"
 	"github.com/ortuman/jackal/transport/compress"
@@ -41,8 +41,8 @@ const (
 type inStream struct {
 	cfg            *streamConfig
 	router         router.Router
-	userRep        repository.User
-	blockListRep   repository.BlockList
+	userSt         storage.User
+	blockListSt    storage.BlockList
 	mods           *module.Modules
 	comps          *component.Components
 	sess           *session.Session
@@ -65,20 +65,20 @@ type inStream struct {
 	ctxCancelFn    context.CancelFunc
 }
 
-func newStream(id string, config *streamConfig, tr transport.Transport, mods *module.Modules, comps *component.Components, router router.Router, userRep repository.User, blockListRep repository.BlockList) stream.C2S {
+func newStream(id string, config *streamConfig, tr transport.Transport, mods *module.Modules, comps *component.Components, router router.Router, userSt storage.User, blockListSt storage.BlockList) stream.C2S {
 	ctx, ctxCancelFn := context.WithCancel(context.Background())
 	s := &inStream{
-		cfg:          config,
-		tr:           tr,
-		router:       router,
-		userRep:      userRep,
-		blockListRep: blockListRep,
-		mods:         mods,
-		comps:        comps,
-		id:           id,
-		runQueue:     runqueue.New(id),
-		ctx:          ctx,
-		ctxCancelFn:  ctxCancelFn,
+		cfg:         config,
+		tr:          tr,
+		router:      router,
+		userSt:      userSt,
+		blockListSt: blockListSt,
+		mods:        mods,
+		comps:       comps,
+		id:          id,
+		runQueue:    runqueue.New(id),
+		ctx:         ctx,
+		ctxCancelFn: ctxCancelFn,
 	}
 
 	// initialize stream context
@@ -193,22 +193,22 @@ func (s *inStream) initializeAuthenticators() {
 	for _, a := range s.cfg.sasl {
 		switch a {
 		case "plain":
-			authenticators = append(authenticators, auth.NewPlain(s, s.userRep))
+			authenticators = append(authenticators, auth.NewPlain(s, s.userSt))
 
 		case "digest_md5":
-			authenticators = append(authenticators, auth.NewDigestMD5(s, s.userRep))
+			authenticators = append(authenticators, auth.NewDigestMD5(s, s.userSt))
 
 		case "scram_sha_1":
-			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA1, false, s.userRep))
-			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA1, true, s.userRep))
+			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA1, false, s.userSt))
+			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA1, true, s.userSt))
 
 		case "scram_sha_256":
-			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA256, false, s.userRep))
-			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA256, true, s.userRep))
+			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA256, false, s.userSt))
+			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA256, true, s.userSt))
 
 		case "scram_sha_512":
-			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA512, false, s.userRep))
-			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA512, true, s.userRep))
+			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA512, false, s.userSt))
+			authenticators = append(authenticators, auth.NewScram(s, tr, auth.ScramSHA512, true, s.userSt))
 		}
 	}
 	s.authenticators = authenticators
@@ -813,7 +813,7 @@ func (s *inStream) disconnectClosingSession(ctx context.Context, closeSession, u
 }
 
 func (s *inStream) isBlockedJID(ctx context.Context, j *jid.JID) bool {
-	blockList, err := s.blockListRep.FetchBlockListItems(ctx, s.Username())
+	blockList, err := s.blockListSt.FetchBlockListItems(ctx, s.Username())
 	if err != nil {
 		log.Error(err)
 		return false

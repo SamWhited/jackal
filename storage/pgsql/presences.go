@@ -18,19 +18,19 @@ import (
 	"github.com/ortuman/jackal/xmpp/jid"
 )
 
-type pgSQLPresences struct {
+type Presences struct {
 	*pgSQLStorage
 	pool *pool.BufferPool
 }
 
-func newPresences(db *sql.DB) *pgSQLPresences {
-	return &pgSQLPresences{
+func newPresences(db *sql.DB) *Presences {
+	return &Presences{
 		pgSQLStorage: newStorage(db),
 		pool:         pool.NewBufferPool(),
 	}
 }
 
-func (s *pgSQLPresences) UpsertPresence(ctx context.Context, presence *xmpp.Presence, jid *jid.JID, allocationID string) (loaded bool, err error) {
+func (s *Presences) UpsertPresence(ctx context.Context, presence *xmpp.Presence, jid *jid.JID, allocationID string) (loaded bool, err error) {
 	buf := s.pool.Get()
 	defer s.pool.Put(buf)
 	if err := presence.ToXML(buf, true); err != nil {
@@ -57,7 +57,7 @@ func (s *pgSQLPresences) UpsertPresence(ctx context.Context, presence *xmpp.Pres
 	return inserted, nil
 }
 
-func (s *pgSQLPresences) FetchPresence(ctx context.Context, jid *jid.JID) (*capsmodel.PresenceCaps, error) {
+func (s *Presences) FetchPresence(ctx context.Context, jid *jid.JID) (*capsmodel.PresenceCaps, error) {
 	var rawXML, node, ver, featuresJSON string
 
 	q := sq.Select("presence", "c.node", "c.ver", "c.features").
@@ -82,7 +82,7 @@ func (s *pgSQLPresences) FetchPresence(ctx context.Context, jid *jid.JID) (*caps
 	}
 }
 
-func (s *pgSQLPresences) FetchPresencesMatchingJID(ctx context.Context, jid *jid.JID) ([]capsmodel.PresenceCaps, error) {
+func (s *Presences) FetchPresencesMatchingJID(ctx context.Context, jid *jid.JID) ([]capsmodel.PresenceCaps, error) {
 	var preds sq.And
 	if len(jid.Node()) > 0 {
 		preds = append(preds, sq.Eq{"username": jid.Node()})
@@ -123,7 +123,7 @@ func (s *pgSQLPresences) FetchPresencesMatchingJID(ctx context.Context, jid *jid
 	return res, nil
 }
 
-func (s *pgSQLPresences) DeletePresence(ctx context.Context, jid *jid.JID) error {
+func (s *Presences) DeletePresence(ctx context.Context, jid *jid.JID) error {
 	_, err := sq.Delete("presences").
 		Where(sq.And{
 			sq.Eq{"username": jid.Node()},
@@ -134,19 +134,19 @@ func (s *pgSQLPresences) DeletePresence(ctx context.Context, jid *jid.JID) error
 	return err
 }
 
-func (s *pgSQLPresences) DeleteAllocationPresences(ctx context.Context, allocationID string) error {
+func (s *Presences) DeleteAllocationPresences(ctx context.Context, allocationID string) error {
 	_, err := sq.Delete("presences").
 		Where(sq.Eq{"allocation_id": allocationID}).
 		RunWith(s.db).ExecContext(ctx)
 	return err
 }
 
-func (s *pgSQLPresences) ClearPresences(ctx context.Context) error {
+func (s *Presences) ClearPresences(ctx context.Context) error {
 	_, err := sq.Delete("presences").RunWith(s.db).ExecContext(ctx)
 	return err
 }
 
-func (s *pgSQLPresences) UpsertCapabilities(ctx context.Context, caps *capsmodel.Capabilities) error {
+func (s *Presences) UpsertCapabilities(ctx context.Context, caps *capsmodel.Capabilities) error {
 	b, err := json.Marshal(caps.Features)
 	if err != nil {
 		return err
@@ -159,7 +159,7 @@ func (s *pgSQLPresences) UpsertCapabilities(ctx context.Context, caps *capsmodel
 	return err
 }
 
-func (s *pgSQLPresences) FetchCapabilities(ctx context.Context, node, ver string) (*capsmodel.Capabilities, error) {
+func (s *Presences) FetchCapabilities(ctx context.Context, node, ver string) (*capsmodel.Capabilities, error) {
 	var b string
 	err := sq.Select("features").From("capabilities").
 		Where(sq.And{sq.Eq{"node": node}, sq.Eq{"ver": ver}}).

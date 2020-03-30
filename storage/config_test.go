@@ -10,7 +10,7 @@ import (
 
 	"github.com/ortuman/jackal/storage/mysql"
 	"github.com/stretchr/testify/require"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 func TestStorageConfig(t *testing.T) {

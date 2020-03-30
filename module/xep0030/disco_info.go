@@ -9,8 +9,9 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ortuman/jackal/storage"
+
 	"github.com/ortuman/jackal/router"
-	"github.com/ortuman/jackal/storage/repository"
 	"github.com/ortuman/jackal/util/runqueue"
 	"github.com/ortuman/jackal/xmpp"
 	"github.com/ortuman/jackal/xmpp/jid"
@@ -31,12 +32,12 @@ type DiscoInfo struct {
 }
 
 // New returns a disco info IQ handler module.
-func New(router router.Router, rosterRep repository.Roster) *DiscoInfo {
+func New(router router.Router, rosterSt storage.Roster) *DiscoInfo {
 	di := &DiscoInfo{
 		router: router,
 		srvProvider: &serverProvider{
-			router:    router,
-			rosterRep: rosterRep,
+			router:   router,
+			rosterSt: rosterSt,
 		},
 		providers: make(map[string]InfoProvider),
 		runQueue:  runqueue.New("xep0030"),

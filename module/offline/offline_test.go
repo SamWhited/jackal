@@ -84,6 +84,7 @@ func setupTest(domain string) (router.Router, *memorystorage.Offline) {
 		hosts,
 		c2srouter.New(memorystorage.NewUser(), memorystorage.NewBlockList()),
 		nil,
+		nil,
 	)
 	return r, s
 }

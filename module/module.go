@@ -8,6 +8,8 @@ package module
 import (
 	"context"
 
+	"github.com/ortuman/jackal/storage"
+
 	"github.com/ortuman/jackal/log"
 	"github.com/ortuman/jackal/module/offline"
 	"github.com/ortuman/jackal/module/roster"
@@ -22,7 +24,6 @@ import (
 	"github.com/ortuman/jackal/module/xep0191"
 	"github.com/ortuman/jackal/module/xep0199"
 	"github.com/ortuman/jackal/router"
-	"github.com/ortuman/jackal/storage/repository"
 	"github.com/ortuman/jackal/xmpp"
 )
 
@@ -63,40 +64,40 @@ type Modules struct {
 }
 
 // New returns a set of modules derived from a concrete configuration.
-func New(config *Config, router router.Router, reps repository.Container, allocationID string) *Modules {
-	var presenceHub = xep0115.New(router, reps.Presences(), allocationID)
+func New(config *Config, router router.Router, st *storage.Storage, allocationID string) *Modules {
+	var presenceHub = xep0115.New(router, st.Presences, allocationID)
 
 	m := &Modules{router: router}
 
 	// XEP-0030: Service Discovery (https://xmpp.org/extensions/xep-0030.html)
-	m.DiscoInfo = xep0030.New(router, reps.Roster())
+	m.DiscoInfo = xep0030.New(router, st.Roster)
 	m.iqHandlers = append(m.iqHandlers, m.DiscoInfo)
 	m.all = append(m.all, m.DiscoInfo)
 
 	// XEP-0012: Last Activity (https://xmpp.org/extensions/xep-0012.html)
 	if _, ok := config.Enabled["last_activity"]; ok {
-		m.LastActivity = xep0012.New(m.DiscoInfo, router, reps.User(), reps.Roster())
+		m.LastActivity = xep0012.New(m.DiscoInfo, router, st.User, st.Roster)
 		m.iqHandlers = append(m.iqHandlers, m.LastActivity)
 		m.all = append(m.all, m.LastActivity)
 	}
 
 	// XEP-0049: Private XML Storage (https://xmpp.org/extensions/xep-0049.html)
 	if _, ok := config.Enabled["private"]; ok {
-		m.Private = xep0049.New(router, reps.Private())
+		m.Private = xep0049.New(router, st.Private)
 		m.iqHandlers = append(m.iqHandlers, m.Private)
 		m.all = append(m.all, m.Private)
 	}
 
 	// XEP-0054: vcard-temp (https://xmpp.org/extensions/xep-0054.html)
 	if _, ok := config.Enabled["vcard"]; ok {
-		m.VCard = xep0054.New(m.DiscoInfo, router, reps.VCard())
+		m.VCard = xep0054.New(m.DiscoInfo, router, st.VCard)
 		m.iqHandlers = append(m.iqHandlers, m.VCard)
 		m.all = append(m.all, m.VCard)
 	}
 
 	// XEP-0077: In-band registration (https://xmpp.org/extensions/xep-0077.html)
 	if _, ok := config.Enabled["registration"]; ok {
-		m.Register = xep0077.New(&config.Registration, m.DiscoInfo, router, reps.User())
+		m.Register = xep0077.New(&config.Registration, m.DiscoInfo, router, st.User)
 		m.iqHandlers = append(m.iqHandlers, m.Register)
 		m.all = append(m.all, m.Register)
 	}
@@ -110,20 +111,20 @@ func New(config *Config, router router.Router, reps repository.Container, alloca
 
 	// XEP-0160: Offline message storage (https://xmpp.org/extensions/xep-0160.html)
 	if _, ok := config.Enabled["offline"]; ok {
-		m.Offline = offline.New(&config.Offline, m.DiscoInfo, router, reps.Offline())
+		m.Offline = offline.New(&config.Offline, m.DiscoInfo, router, st.Offline)
 		m.all = append(m.all, m.Offline)
 	}
 
 	// XEP-0163: Personal Eventing Protocol (https://xmpp.org/extensions/xep-0163.html)
 	if _, ok := config.Enabled["pep"]; ok {
-		m.Pep = xep0163.New(m.DiscoInfo, presenceHub, router, reps.Roster(), reps.PubSub())
+		m.Pep = xep0163.New(m.DiscoInfo, presenceHub, router, st.Roster, st.PubSub)
 		m.iqHandlers = append(m.iqHandlers, m.Pep)
 		m.all = append(m.all, m.Pep)
 	}
 
 	// XEP-0191: Blocking Command (https://xmpp.org/extensions/xep-0191.html)
 	if _, ok := config.Enabled["blocking_command"]; ok {
-		m.BlockingCmd = xep0191.New(m.DiscoInfo, presenceHub, router, reps.Roster(), reps.BlockList())
+		m.BlockingCmd = xep0191.New(m.DiscoInfo, presenceHub, router, st.Roster, st.BlockList)
 		m.iqHandlers = append(m.iqHandlers, m.BlockingCmd)
 		m.all = append(m.all, m.BlockingCmd)
 	}
@@ -139,7 +140,7 @@ func New(config *Config, router router.Router, reps repository.Container, alloca
 	if _, ok := config.Enabled["roster"]; ok {
 		m.iqHandlers = append(m.iqHandlers, presenceHub)
 
-		m.Roster = roster.New(&config.Roster, presenceHub, m.Pep, router, reps.User(), reps.Roster())
+		m.Roster = roster.New(&config.Roster, presenceHub, m.Pep, router, st.User, st.Roster)
 		m.iqHandlers = append(m.iqHandlers, m.Roster)
 		m.all = append(m.all, m.Roster)
 	}

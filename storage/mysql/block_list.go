@@ -13,17 +13,17 @@ import (
 	"github.com/ortuman/jackal/model"
 )
 
-type mySQLBlockList struct {
+type BlockList struct {
 	*mySQLStorage
 }
 
-func newBlockList(db *sql.DB) *mySQLBlockList {
-	return &mySQLBlockList{
+func newBlockList(db *sql.DB) *BlockList {
+	return &BlockList{
 		mySQLStorage: newStorage(db),
 	}
 }
 
-func (s *mySQLBlockList) InsertBlockListItem(ctx context.Context, item *model.BlockListItem) error {
+func (s *BlockList) InsertBlockListItem(ctx context.Context, item *model.BlockListItem) error {
 	_, err := sq.Insert("blocklist_items").
 		Options("IGNORE").
 		Columns("username", "jid", "created_at").
@@ -32,14 +32,14 @@ func (s *mySQLBlockList) InsertBlockListItem(ctx context.Context, item *model.Bl
 	return err
 }
 
-func (s *mySQLBlockList) DeleteBlockListItem(ctx context.Context, item *model.BlockListItem) error {
+func (s *BlockList) DeleteBlockListItem(ctx context.Context, item *model.BlockListItem) error {
 	_, err := sq.Delete("blocklist_items").
 		Where(sq.And{sq.Eq{"username": item.Username}, sq.Eq{"jid": item.JID}}).
 		RunWith(s.db).ExecContext(ctx)
 	return err
 }
 
-func (s *mySQLBlockList) FetchBlockListItems(ctx context.Context, username string) ([]model.BlockListItem, error) {
+func (s *BlockList) FetchBlockListItems(ctx context.Context, username string) ([]model.BlockListItem, error) {
 	q := sq.Select("username", "jid").
 		From("blocklist_items").
 		Where(sq.Eq{"username": username}).

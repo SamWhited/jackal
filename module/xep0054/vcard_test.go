@@ -237,6 +237,7 @@ func setupTest(domain string) (router.Router, *memorystorage.VCard) {
 		hosts,
 		c2srouter.New(memorystorage.NewUser(), memorystorage.NewBlockList()),
 		nil,
+		nil,
 	)
 	return r, s
 }

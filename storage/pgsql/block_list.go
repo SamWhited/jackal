@@ -13,17 +13,17 @@ import (
 	"github.com/ortuman/jackal/model"
 )
 
-type pgSQLBlockList struct {
+type BlockList struct {
 	*pgSQLStorage
 }
 
-func newBlockList(db *sql.DB) *pgSQLBlockList {
-	return &pgSQLBlockList{
+func newBlockList(db *sql.DB) *BlockList {
+	return &BlockList{
 		pgSQLStorage: newStorage(db),
 	}
 }
 
-func (s *pgSQLBlockList) InsertBlockListItem(ctx context.Context, item *model.BlockListItem) error {
+func (s *BlockList) InsertBlockListItem(ctx context.Context, item *model.BlockListItem) error {
 	q := sq.Insert("blocklist_items").
 		Columns("username", "jid").
 		Values(item.Username, item.JID).
@@ -32,7 +32,7 @@ func (s *pgSQLBlockList) InsertBlockListItem(ctx context.Context, item *model.Bl
 	return err
 }
 
-func (s *pgSQLBlockList) DeleteBlockListItem(ctx context.Context, item *model.BlockListItem) error {
+func (s *BlockList) DeleteBlockListItem(ctx context.Context, item *model.BlockListItem) error {
 	q := sq.Delete("blocklist_items").
 		Where(sq.And{sq.Eq{"username": item.Username}, sq.Eq{"jid": item.JID}}).
 		RunWith(s.db)
@@ -40,7 +40,7 @@ func (s *pgSQLBlockList) DeleteBlockListItem(ctx context.Context, item *model.Bl
 	return err
 }
 
-func (s *pgSQLBlockList) FetchBlockListItems(ctx context.Context, username string) ([]model.BlockListItem, error) {
+func (s *BlockList) FetchBlockListItems(ctx context.Context, username string) ([]model.BlockListItem, error) {
 	q := sq.Select("username", "jid").
 		From("blocklist_items").
 		Where(sq.Eq{"username": username}).

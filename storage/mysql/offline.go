@@ -15,19 +15,19 @@ import (
 	"github.com/ortuman/jackal/xmpp/jid"
 )
 
-type mySQLOffline struct {
+type Offline struct {
 	*mySQLStorage
 	pool *pool.BufferPool
 }
 
-func newOffline(db *sql.DB) *mySQLOffline {
-	return &mySQLOffline{
+func newOffline(db *sql.DB) *Offline {
+	return &Offline{
 		mySQLStorage: newStorage(db),
 		pool:         pool.NewBufferPool(),
 	}
 }
 
-func (s *mySQLOffline) InsertOfflineMessage(ctx context.Context, message *xmpp.Message, username string) error {
+func (s *Offline) InsertOfflineMessage(ctx context.Context, message *xmpp.Message, username string) error {
 	q := sq.Insert("offline_messages").
 		Columns("username", "data", "created_at").
 		Values(username, message.String(), nowExpr)
@@ -35,7 +35,7 @@ func (s *mySQLOffline) InsertOfflineMessage(ctx context.Context, message *xmpp.M
 	return err
 }
 
-func (s *mySQLOffline) CountOfflineMessages(ctx context.Context, username string) (int, error) {
+func (s *Offline) CountOfflineMessages(ctx context.Context, username string) (int, error) {
 	q := sq.Select("COUNT(*)").
 		From("offline_messages").
 		Where(sq.Eq{"username": username}).
@@ -51,7 +51,7 @@ func (s *mySQLOffline) CountOfflineMessages(ctx context.Context, username string
 	}
 }
 
-func (s *mySQLOffline) FetchOfflineMessages(ctx context.Context, username string) ([]xmpp.Message, error) {
+func (s *Offline) FetchOfflineMessages(ctx context.Context, username string) ([]xmpp.Message, error) {
 	q := sq.Select("data").
 		From("offline_messages").
 		Where(sq.Eq{"username": username}).
@@ -97,7 +97,7 @@ func (s *mySQLOffline) FetchOfflineMessages(ctx context.Context, username string
 	return messages, nil
 }
 
-func (s *mySQLOffline) DeleteOfflineMessages(ctx context.Context, username string) error {
+func (s *Offline) DeleteOfflineMessages(ctx context.Context, username string) error {
 	q := sq.Delete("offline_messages").Where(sq.Eq{"username": username})
 	_, err := q.RunWith(s.db).ExecContext(ctx)
 	return err

@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ortuman/jackal/storage"
+
 	c2srouter "github.com/ortuman/jackal/c2s/router"
 	"github.com/ortuman/jackal/model"
 	rostermodel "github.com/ortuman/jackal/model/roster"
@@ -18,7 +20,6 @@ import (
 	"github.com/ortuman/jackal/router"
 	"github.com/ortuman/jackal/router/host"
 	memorystorage "github.com/ortuman/jackal/storage/memory"
-	"github.com/ortuman/jackal/storage/repository"
 	"github.com/ortuman/jackal/stream"
 	"github.com/ortuman/jackal/xmpp"
 	"github.com/ortuman/jackal/xmpp/jid"
@@ -488,16 +489,17 @@ func TestRoster_Subscription(t *testing.T) {
 	require.Equal(t, rostermodel.SubscriptionNone, ri.Subscription)
 }
 
-func setupTest(domain string) (router.Router, repository.User, repository.Presences, repository.Roster) {
+func setupTest(domain string) (router.Router, storage.User, storage.Presences, storage.Roster) {
 	hosts, _ := host.New([]host.Config{{Name: domain, Certificate: tls.Certificate{}}})
 
-	userRep := memorystorage.NewUser()
-	presencesRep := memorystorage.NewPresences()
-	rosterRep := memorystorage.NewRoster()
+	userSt := memorystorage.NewUser()
+	presencesSt := memorystorage.NewPresences()
+	rosterSt := memorystorage.NewRoster()
 	r, _ := router.New(
 		hosts,
-		c2srouter.New(userRep, memorystorage.NewBlockList()),
+		c2srouter.New(userSt, memorystorage.NewBlockList()),
+		nil,
 		nil,
 	)
-	return r, userRep, presencesRep, rosterRep
+	return r, userSt, presencesSt, rosterSt
 }

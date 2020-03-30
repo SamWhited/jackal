@@ -292,9 +292,9 @@ func TestStorageFetchRosterGroups(t *testing.T) {
 	require.Equal(t, errGeneric, err)
 }
 
-func newRosterMock() (*pgSQLRoster, sqlmock.Sqlmock) {
+func newRosterMock() (*Roster, sqlmock.Sqlmock) {
 	s, sqlMock := newStorageMock()
-	return &pgSQLRoster{
+	return &Roster{
 		pgSQLStorage: s,
 	}, sqlMock
 }

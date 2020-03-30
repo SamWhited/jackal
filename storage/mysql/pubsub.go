@@ -15,17 +15,17 @@ import (
 	"github.com/ortuman/jackal/xmpp"
 )
 
-type mySQLPubSub struct {
+type PubSub struct {
 	*mySQLStorage
 }
 
-func newPubSub(db *sql.DB) *mySQLPubSub {
-	return &mySQLPubSub{
+func newPubSub(db *sql.DB) *PubSub {
+	return &PubSub{
 		mySQLStorage: newStorage(db),
 	}
 }
 
-func (s *mySQLPubSub) FetchHosts(ctx context.Context) ([]string, error) {
+func (s *PubSub) FetchHosts(ctx context.Context) ([]string, error) {
 	rows, err := sq.Select("DISTINCT(host)").
 		From("pubsub_nodes").
 		RunWith(s.db).
@@ -46,7 +46,7 @@ func (s *mySQLPubSub) FetchHosts(ctx context.Context) ([]string, error) {
 	return hosts, nil
 }
 
-func (s *mySQLPubSub) UpsertNode(ctx context.Context, node *pubsubmodel.Node) error {
+func (s *PubSub) UpsertNode(ctx context.Context, node *pubsubmodel.Node) error {
 	return s.inTransaction(ctx, func(tx *sql.Tx) error {
 
 		// if not existing, insert new node
@@ -94,7 +94,7 @@ func (s *mySQLPubSub) UpsertNode(ctx context.Context, node *pubsubmodel.Node) er
 	})
 }
 
-func (s *mySQLPubSub) FetchNode(ctx context.Context, host, name string) (*pubsubmodel.Node, error) {
+func (s *PubSub) FetchNode(ctx context.Context, host, name string) (*pubsubmodel.Node, error) {
 	opts, err := s.fetchPubSubNodeOptions(ctx, host, name)
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func (s *mySQLPubSub) FetchNode(ctx context.Context, host, name string) (*pubsub
 	}, nil
 }
 
-func (s *mySQLPubSub) FetchNodes(ctx context.Context, host string) ([]pubsubmodel.Node, error) {
+func (s *PubSub) FetchNodes(ctx context.Context, host string) ([]pubsubmodel.Node, error) {
 	rows, err := sq.Select("name").
 		From("pubsub_nodes").
 		Where(sq.Eq{"host": host}).
@@ -138,7 +138,7 @@ func (s *mySQLPubSub) FetchNodes(ctx context.Context, host string) ([]pubsubmode
 	return nodes, nil
 }
 
-func (s *mySQLPubSub) FetchSubscribedNodes(ctx context.Context, jid string) ([]pubsubmodel.Node, error) {
+func (s *PubSub) FetchSubscribedNodes(ctx context.Context, jid string) ([]pubsubmodel.Node, error) {
 	rows, err := sq.Select("host", "name").
 		From("pubsub_nodes").
 		Where(sq.Expr("id IN (SELECT DISTINCT(node_id) FROM pubsub_subscriptions WHERE jid = ? AND subscription = ?)", jid, pubsubmodel.Subscribed)).
@@ -167,7 +167,7 @@ func (s *mySQLPubSub) FetchSubscribedNodes(ctx context.Context, jid string) ([]p
 	return nodes, nil
 }
 
-func (s *mySQLPubSub) DeleteNode(ctx context.Context, host, name string) error {
+func (s *PubSub) DeleteNode(ctx context.Context, host, name string) error {
 	return s.inTransaction(ctx, func(tx *sql.Tx) error {
 		// fetch node identifier
 		var nodeIdentifier string
@@ -220,7 +220,7 @@ func (s *mySQLPubSub) DeleteNode(ctx context.Context, host, name string) error {
 	})
 }
 
-func (s *mySQLPubSub) UpsertNodeItem(ctx context.Context, item *pubsubmodel.Item, host, name string, maxNodeItems int) error {
+func (s *PubSub) UpsertNodeItem(ctx context.Context, item *pubsubmodel.Item, host, name string, maxNodeItems int) error {
 	return s.inTransaction(ctx, func(tx *sql.Tx) error {
 		// fetch node identifier
 		var nodeIdentifier string
@@ -278,7 +278,7 @@ func (s *mySQLPubSub) UpsertNodeItem(ctx context.Context, item *pubsubmodel.Item
 	})
 }
 
-func (s *mySQLPubSub) FetchNodeItems(ctx context.Context, host, name string) ([]pubsubmodel.Item, error) {
+func (s *PubSub) FetchNodeItems(ctx context.Context, host, name string) ([]pubsubmodel.Item, error) {
 	rows, err := sq.Select("item_id", "publisher", "payload").
 		From("pubsub_items").
 		Where("node_id = (SELECT id FROM pubsub_nodes WHERE host = ? AND name = ?)", host, name).
@@ -292,7 +292,7 @@ func (s *mySQLPubSub) FetchNodeItems(ctx context.Context, host, name string) ([]
 	return scanPubSubNodeItems(rows)
 }
 
-func (s *mySQLPubSub) FetchNodeItemsWithIDs(ctx context.Context, host, name string, identifiers []string) ([]pubsubmodel.Item, error) {
+func (s *PubSub) FetchNodeItemsWithIDs(ctx context.Context, host, name string, identifiers []string) ([]pubsubmodel.Item, error) {
 	rows, err := sq.Select("item_id", "publisher", "payload").
 		From("pubsub_items").
 		Where(sq.And{sq.Expr("node_id = (SELECT id FROM pubsub_nodes WHERE host = ? AND name = ?)", host, name), sq.Eq{"id": identifiers}}).
@@ -306,7 +306,7 @@ func (s *mySQLPubSub) FetchNodeItemsWithIDs(ctx context.Context, host, name stri
 	return scanPubSubNodeItems(rows)
 }
 
-func (s *mySQLPubSub) FetchNodeLastItem(ctx context.Context, host, name string) (*pubsubmodel.Item, error) {
+func (s *PubSub) FetchNodeLastItem(ctx context.Context, host, name string) (*pubsubmodel.Item, error) {
 	row := sq.Select("item_id", "publisher", "payload").
 		From("pubsub_items").
 		Where("node_id = (SELECT id FROM pubsub_nodes WHERE host = ? AND name = ?)", host, name).
@@ -325,7 +325,7 @@ func (s *mySQLPubSub) FetchNodeLastItem(ctx context.Context, host, name string) 
 	}
 }
 
-func (s *mySQLPubSub) UpsertNodeAffiliation(ctx context.Context, affiliation *pubsubmodel.Affiliation, host, name string) error {
+func (s *PubSub) UpsertNodeAffiliation(ctx context.Context, affiliation *pubsubmodel.Affiliation, host, name string) error {
 	return s.inTransaction(ctx, func(tx *sql.Tx) error {
 
 		// fetch node identifier
@@ -354,7 +354,7 @@ func (s *mySQLPubSub) UpsertNodeAffiliation(ctx context.Context, affiliation *pu
 	})
 }
 
-func (s *mySQLPubSub) FetchNodeAffiliation(ctx context.Context, host, name, jid string) (*pubsubmodel.Affiliation, error) {
+func (s *PubSub) FetchNodeAffiliation(ctx context.Context, host, name, jid string) (*pubsubmodel.Affiliation, error) {
 	var aff pubsubmodel.Affiliation
 
 	row := sq.Select("jid", "affiliation").
@@ -372,7 +372,7 @@ func (s *mySQLPubSub) FetchNodeAffiliation(ctx context.Context, host, name, jid 
 	}
 }
 
-func (s *mySQLPubSub) FetchNodeAffiliations(ctx context.Context, host, name string) ([]pubsubmodel.Affiliation, error) {
+func (s *PubSub) FetchNodeAffiliations(ctx context.Context, host, name string) ([]pubsubmodel.Affiliation, error) {
 	rows, err := sq.Select("jid", "affiliation").
 		From("pubsub_affiliations").
 		Where("node_id = (SELECT id FROM pubsub_nodes WHERE host = ? AND name = ?)", host, name).
@@ -385,14 +385,14 @@ func (s *mySQLPubSub) FetchNodeAffiliations(ctx context.Context, host, name stri
 	return scanPubSubNodeAffiliations(rows)
 }
 
-func (s *mySQLPubSub) DeleteNodeAffiliation(ctx context.Context, jid, host, name string) error {
+func (s *PubSub) DeleteNodeAffiliation(ctx context.Context, jid, host, name string) error {
 	_, err := sq.Delete("pubsub_affiliations").
 		Where("jid = ? AND node_id = (SELECT id FROM pubsub_nodes WHERE host = ? AND name = ?)", jid, host, name).
 		RunWith(s.db).ExecContext(ctx)
 	return err
 }
 
-func (s *mySQLPubSub) UpsertNodeSubscription(ctx context.Context, subscription *pubsubmodel.Subscription, host, name string) error {
+func (s *PubSub) UpsertNodeSubscription(ctx context.Context, subscription *pubsubmodel.Subscription, host, name string) error {
 	return s.inTransaction(ctx, func(tx *sql.Tx) error {
 		// fetch node identifier
 		var nodeIdentifier string
@@ -420,7 +420,7 @@ func (s *mySQLPubSub) UpsertNodeSubscription(ctx context.Context, subscription *
 	})
 }
 
-func (s *mySQLPubSub) FetchNodeSubscriptions(ctx context.Context, host, name string) ([]pubsubmodel.Subscription, error) {
+func (s *PubSub) FetchNodeSubscriptions(ctx context.Context, host, name string) ([]pubsubmodel.Subscription, error) {
 	rows, err := sq.Select("subid", "jid", "subscription").
 		From("pubsub_subscriptions").
 		Where("node_id = (SELECT id FROM pubsub_nodes WHERE host = ? AND name = ?)", host, name).
@@ -433,14 +433,14 @@ func (s *mySQLPubSub) FetchNodeSubscriptions(ctx context.Context, host, name str
 	return scanPubSubNodeSubscriptions(rows)
 }
 
-func (s *mySQLPubSub) DeleteNodeSubscription(ctx context.Context, jid, host, name string) error {
+func (s *PubSub) DeleteNodeSubscription(ctx context.Context, jid, host, name string) error {
 	_, err := sq.Delete("pubsub_subscriptions").
 		Where("jid = ? AND node_id = (SELECT id FROM pubsub_nodes WHERE host = ? AND name = ?)", jid, host, name).
 		RunWith(s.db).ExecContext(ctx)
 	return err
 }
 
-func (s *mySQLPubSub) fetchPubSubNodeOptions(ctx context.Context, host, name string) (*pubsubmodel.Options, error) {
+func (s *PubSub) fetchPubSubNodeOptions(ctx context.Context, host, name string) (*pubsubmodel.Options, error) {
 	rows, err := sq.Select("name", "value").
 		From("pubsub_node_options").
 		Where("node_id = (SELECT id FROM pubsub_nodes WHERE host = ? AND name = ?)", host, name).

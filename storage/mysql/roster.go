@@ -17,17 +17,17 @@ import (
 	"github.com/ortuman/jackal/xmpp/jid"
 )
 
-type mySQLRoster struct {
+type Roster struct {
 	*mySQLStorage
 }
 
-func newRoster(db *sql.DB) *mySQLRoster {
-	return &mySQLRoster{
+func newRoster(db *sql.DB) *Roster {
+	return &Roster{
 		mySQLStorage: newStorage(db),
 	}
 }
 
-func (s *mySQLRoster) UpsertRosterItem(ctx context.Context, ri *rostermodel.Item) (rostermodel.Version, error) {
+func (s *Roster) UpsertRosterItem(ctx context.Context, ri *rostermodel.Item) (rostermodel.Version, error) {
 	var ver rostermodel.Version
 
 	err := s.inTransaction(ctx, func(tx *sql.Tx) error {
@@ -79,7 +79,7 @@ func (s *mySQLRoster) UpsertRosterItem(ctx context.Context, ri *rostermodel.Item
 	return ver, nil
 }
 
-func (s *mySQLRoster) DeleteRosterItem(ctx context.Context, username, jid string) (rostermodel.Version, error) {
+func (s *Roster) DeleteRosterItem(ctx context.Context, username, jid string) (rostermodel.Version, error) {
 	var ver rostermodel.Version
 
 	err := s.inTransaction(ctx, func(tx *sql.Tx) error {
@@ -116,7 +116,7 @@ func (s *mySQLRoster) DeleteRosterItem(ctx context.Context, username, jid string
 	return ver, nil
 }
 
-func (s *mySQLRoster) FetchRosterItems(ctx context.Context, username string) ([]rostermodel.Item, rostermodel.Version, error) {
+func (s *Roster) FetchRosterItems(ctx context.Context, username string) ([]rostermodel.Item, rostermodel.Version, error) {
 	q := sq.Select("username", "jid", "name", "subscription", "`groups`", "ask", "ver").
 		From("roster_items").
 		Where(sq.Eq{"username": username}).
@@ -139,7 +139,7 @@ func (s *mySQLRoster) FetchRosterItems(ctx context.Context, username string) ([]
 	return items, ver, nil
 }
 
-func (s *mySQLRoster) FetchRosterItemsInGroups(ctx context.Context, username string, groups []string) ([]rostermodel.Item, rostermodel.Version, error) {
+func (s *Roster) FetchRosterItemsInGroups(ctx context.Context, username string, groups []string) ([]rostermodel.Item, rostermodel.Version, error) {
 	q := sq.Select("ris.username", "ris.jid", "ris.name", "ris.subscription", "ris.`groups`", "ris.ask", "ris.ver").
 		From("roster_items ris").
 		LeftJoin("roster_groups g ON ris.username = g.username").
@@ -163,7 +163,7 @@ func (s *mySQLRoster) FetchRosterItemsInGroups(ctx context.Context, username str
 	return items, ver, nil
 }
 
-func (s *mySQLRoster) FetchRosterItem(ctx context.Context, username, jid string) (*rostermodel.Item, error) {
+func (s *Roster) FetchRosterItem(ctx context.Context, username, jid string) (*rostermodel.Item, error) {
 	q := sq.Select("username", "jid", "name", "subscription", "`groups`", "ask", "ver").
 		From("roster_items").
 		Where(sq.And{sq.Eq{"username": username}, sq.Eq{"jid": jid}})
@@ -180,7 +180,7 @@ func (s *mySQLRoster) FetchRosterItem(ctx context.Context, username, jid string)
 	}
 }
 
-func (s *mySQLRoster) UpsertRosterNotification(ctx context.Context, rn *rostermodel.Notification) error {
+func (s *Roster) UpsertRosterNotification(ctx context.Context, rn *rostermodel.Notification) error {
 	presenceXML := rn.Presence.String()
 	q := sq.Insert("roster_notifications").
 		Columns("contact", "jid", "elements", "updated_at", "created_at").
@@ -190,7 +190,7 @@ func (s *mySQLRoster) UpsertRosterNotification(ctx context.Context, rn *rostermo
 	return err
 }
 
-func (s *mySQLRoster) FetchRosterNotifications(ctx context.Context, contact string) ([]rostermodel.Notification, error) {
+func (s *Roster) FetchRosterNotifications(ctx context.Context, contact string) ([]rostermodel.Notification, error) {
 	q := sq.Select("contact", "jid", "elements").
 		From("roster_notifications").
 		Where(sq.Eq{"contact": contact}).
@@ -213,7 +213,7 @@ func (s *mySQLRoster) FetchRosterNotifications(ctx context.Context, contact stri
 	return ret, nil
 }
 
-func (s *mySQLRoster) FetchRosterNotification(ctx context.Context, contact string, jid string) (*rostermodel.Notification, error) {
+func (s *Roster) FetchRosterNotification(ctx context.Context, contact string, jid string) (*rostermodel.Notification, error) {
 	q := sq.Select("contact", "jid", "elements").
 		From("roster_notifications").
 		Where(sq.And{sq.Eq{"contact": contact}, sq.Eq{"jid": jid}})
@@ -230,13 +230,13 @@ func (s *mySQLRoster) FetchRosterNotification(ctx context.Context, contact strin
 	}
 }
 
-func (s *mySQLRoster) DeleteRosterNotification(ctx context.Context, contact, jid string) error {
+func (s *Roster) DeleteRosterNotification(ctx context.Context, contact, jid string) error {
 	q := sq.Delete("roster_notifications").Where(sq.And{sq.Eq{"contact": contact}, sq.Eq{"jid": jid}})
 	_, err := q.RunWith(s.db).ExecContext(ctx)
 	return err
 }
 
-func (s *mySQLRoster) FetchRosterGroups(ctx context.Context, username string) ([]string, error) {
+func (s *Roster) FetchRosterGroups(ctx context.Context, username string) ([]string, error) {
 	q := sq.Select("`group`").
 		From("roster_groups").
 		Where(sq.Eq{"username": username}).

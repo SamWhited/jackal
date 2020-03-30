@@ -133,9 +133,9 @@ func TestDeleteOfflineMessages(t *testing.T) {
 	require.Equal(t, errGeneric, err)
 }
 
-func newOfflineMock() (*pgSQLOffline, sqlmock.Sqlmock) {
+func newOfflineMock() (*Offline, sqlmock.Sqlmock) {
 	s, sqlMock := newStorageMock()
-	return &pgSQLOffline{
+	return &Offline{
 		pgSQLStorage: s,
 		pool:         pool.NewBufferPool(),
 	}, sqlMock

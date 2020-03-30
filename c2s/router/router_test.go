@@ -9,10 +9,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ortuman/jackal/storage"
+
 	"github.com/ortuman/jackal/model"
 	"github.com/ortuman/jackal/router"
 	memorystorage "github.com/ortuman/jackal/storage/memory"
-	"github.com/ortuman/jackal/storage/repository"
 	"github.com/ortuman/jackal/stream"
 	"github.com/ortuman/jackal/xmpp"
 	"github.com/ortuman/jackal/xmpp/jid"
@@ -84,7 +85,7 @@ func TestRouter_Routing(t *testing.T) {
 	require.Equal(t, router.ErrBlockedJID, err)
 }
 
-func setupTest() (router.C2SRouter, repository.User, repository.BlockList) {
+func setupTest() (router.C2SRouter, storage.User, storage.BlockList) {
 	userRep := memorystorage.NewUser()
 	blockListRep := memorystorage.NewBlockList()
 	return New(userRep, blockListRep), userRep, blockListRep

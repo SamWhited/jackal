@@ -470,9 +470,9 @@ func TestMySQLDeletePubSubNodeSubscription(t *testing.T) {
 	require.Equal(t, errMySQLStorage, err)
 }
 
-func newPubSubMock() (*mySQLPubSub, sqlmock.Sqlmock) {
+func newPubSubMock() (*PubSub, sqlmock.Sqlmock) {
 	s, sqlMock := newStorageMock()
-	return &mySQLPubSub{
+	return &PubSub{
 		mySQLStorage: s,
 	}, sqlMock
 }

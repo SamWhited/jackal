@@ -8,11 +8,12 @@ package xep0077
 import (
 	"context"
 
+	"github.com/ortuman/jackal/storage"
+
 	"github.com/ortuman/jackal/log"
 	"github.com/ortuman/jackal/model"
 	"github.com/ortuman/jackal/module/xep0030"
 	"github.com/ortuman/jackal/router"
-	"github.com/ortuman/jackal/storage/repository"
 	"github.com/ortuman/jackal/stream"
 	"github.com/ortuman/jackal/util/runqueue"
 	"github.com/ortuman/jackal/xmpp"
@@ -35,16 +36,16 @@ type Register struct {
 	cfg      *Config
 	router   router.Router
 	runQueue *runqueue.RunQueue
-	rep      repository.User
+	userSt   storage.User
 }
 
 // New returns an in-band registration IQ handler.
-func New(config *Config, disco *xep0030.DiscoInfo, router router.Router, userRep repository.User) *Register {
+func New(config *Config, disco *xep0030.DiscoInfo, router router.Router, userSt storage.User) *Register {
 	r := &Register{
 		cfg:      config,
 		router:   router,
 		runQueue: runqueue.New("xep0077"),
-		rep:      userRep,
+		userSt:   userSt,
 	}
 	if disco != nil {
 		disco.RegisterServerFeature(registerNamespace)
@@ -146,7 +147,7 @@ func (x *Register) registerNewUser(ctx context.Context, iq *xmpp.IQ, query xmpp.
 		stm.SendElement(ctx, iq.BadRequestError())
 		return
 	}
-	exists, err := x.rep.UserExists(ctx, userEl.Text())
+	exists, err := x.userSt.UserExists(ctx, userEl.Text())
 	if err != nil {
 		log.Error(err)
 		stm.SendElement(ctx, iq.InternalServerError())
@@ -161,7 +162,7 @@ func (x *Register) registerNewUser(ctx context.Context, iq *xmpp.IQ, query xmpp.
 		Password:     passwordEl.Text(),
 		LastPresence: xmpp.NewPresence(stm.JID(), stm.JID(), xmpp.UnavailableType),
 	}
-	if err := x.rep.UpsertUser(ctx, &user); err != nil {
+	if err := x.userSt.UpsertUser(ctx, &user); err != nil {
 		log.Error(err)
 		stm.SendElement(ctx, iq.InternalServerError())
 		return
@@ -179,7 +180,7 @@ func (x *Register) cancelRegistration(ctx context.Context, iq *xmpp.IQ, query xm
 		stm.SendElement(ctx, iq.BadRequestError())
 		return
 	}
-	if err := x.rep.DeleteUser(ctx, stm.Username()); err != nil {
+	if err := x.userSt.DeleteUser(ctx, stm.Username()); err != nil {
 		log.Error(err)
 		stm.SendElement(ctx, iq.InternalServerError())
 		return
@@ -201,7 +202,7 @@ func (x *Register) changePassword(ctx context.Context, password string, username
 		stm.SendElement(ctx, iq.NotAuthorizedError())
 		return
 	}
-	user, err := x.rep.FetchUser(ctx, username)
+	user, err := x.userSt.FetchUser(ctx, username)
 	if err != nil {
 		log.Error(err)
 		stm.SendElement(ctx, iq.InternalServerError())
@@ -213,7 +214,7 @@ func (x *Register) changePassword(ctx context.Context, password string, username
 	}
 	if user.Password != password {
 		user.Password = password
-		if err := x.rep.UpsertUser(ctx, user); err != nil {
+		if err := x.userSt.UpsertUser(ctx, user); err != nil {
 			log.Error(err)
 			stm.SendElement(ctx, iq.InternalServerError())
 			return

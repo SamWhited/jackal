@@ -10,14 +10,13 @@ import (
 	"crypto/tls"
 	"testing"
 
-	"github.com/ortuman/jackal/router/host"
-
 	c2srouter "github.com/ortuman/jackal/c2s/router"
 	"github.com/ortuman/jackal/model"
 	rostermodel "github.com/ortuman/jackal/model/roster"
 	"github.com/ortuman/jackal/router"
+	"github.com/ortuman/jackal/router/host"
+	"github.com/ortuman/jackal/storage"
 	memorystorage "github.com/ortuman/jackal/storage/memory"
-	"github.com/ortuman/jackal/storage/repository"
 	"github.com/ortuman/jackal/stream"
 	"github.com/ortuman/jackal/xmpp"
 	"github.com/ortuman/jackal/xmpp/jid"
@@ -146,7 +145,7 @@ func TestXEP0012_GetOnlineUserLastActivity(t *testing.T) {
 	memorystorage.DisableMockedError()
 }
 
-func setupTest(domain string) (router.Router, repository.User, repository.Roster) {
+func setupTest(domain string) (router.Router, storage.User, storage.Roster) {
 	hosts, _ := host.New([]host.Config{{Name: domain, Certificate: tls.Certificate{}}})
 
 	userRep := memorystorage.NewUser()
@@ -154,6 +153,7 @@ func setupTest(domain string) (router.Router, repository.User, repository.Roster
 	r, _ := router.New(
 		hosts,
 		c2srouter.New(userRep, memorystorage.NewBlockList()),
+		nil,
 		nil,
 	)
 	return r, userRep, rosterRep

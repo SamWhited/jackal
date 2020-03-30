@@ -21,15 +21,11 @@ import (
 	"syscall"
 	"time"
 
-	clusterrouter "github.com/ortuman/jackal/cluster/router"
-
-	"github.com/ortuman/jackal/storage/repository"
-
-	"github.com/ortuman/jackal/cluster"
-
 	"github.com/google/uuid"
 	"github.com/ortuman/jackal/c2s"
 	c2srouter "github.com/ortuman/jackal/c2s/router"
+	"github.com/ortuman/jackal/cluster"
+	clusterrouter "github.com/ortuman/jackal/cluster/router"
 	"github.com/ortuman/jackal/component"
 	"github.com/ortuman/jackal/log"
 	"github.com/ortuman/jackal/module"
@@ -74,7 +70,7 @@ type Application struct {
 	output           io.Writer
 	args             []string
 	logger           log.Logger
-	repContainer     repository.Container
+	storage          *storage.Storage
 	cluster          *cluster.Cluster
 	router           router.Router
 	mods             *module.Modules
@@ -158,7 +154,7 @@ func (a *Application) Run() error {
 	a.printLogo(allocID)
 
 	// initialize storage
-	a.repContainer, err = storage.New(&cfg.Storage)
+	a.storage, err = storage.New(&cfg.Storage)
 	if err != nil {
 		return err
 	}
@@ -169,7 +165,7 @@ func (a *Application) Run() error {
 			return err
 		}
 	} else {
-		if err := a.repContainer.Presences().ClearPresences(context.Background()); err != nil {
+		if err := a.storage.ClearPresences(context.Background()); err != nil {
 			return err
 		}
 	}
@@ -191,7 +187,7 @@ func (a *Application) Run() error {
 	}
 	a.router, err = router.New(
 		hosts,
-		c2srouter.New(a.repContainer.User(), a.repContainer.BlockList()),
+		c2srouter.New(a.storage.User, a.storage.BlockList),
 		s2sRouter,
 		clusterRouter,
 	)
@@ -200,7 +196,7 @@ func (a *Application) Run() error {
 	}
 
 	// initialize modules & components...
-	a.mods = module.New(&cfg.Modules, a.router, a.repContainer, allocID)
+	a.mods = module.New(&cfg.Modules, a.router, a.storage, allocID)
 	a.comps = component.New(&cfg.Components, a.mods.DiscoInfo)
 
 	// start serving s2s...
@@ -212,7 +208,7 @@ func (a *Application) Run() error {
 		a.s2s.Start()
 	}
 	// start serving c2s...
-	a.c2s, err = c2s.New(cfg.C2S, a.mods, a.comps, a.router, a.repContainer.User(), a.repContainer.BlockList())
+	a.c2s, err = c2s.New(cfg.C2S, a.mods, a.comps, a.router, a.storage.User, a.storage.BlockList)
 	if err != nil {
 		return err
 	}
@@ -376,7 +372,7 @@ func (a *Application) doShutdown(ctx context.Context) error {
 			return err
 		}
 	}
-	if err := a.repContainer.Shutdown(ctx); err != nil {
+	if err := a.storage.Shutdown(ctx); err != nil {
 		return err
 	}
 	log.Unset()

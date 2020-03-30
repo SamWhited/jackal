@@ -14,12 +14,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ortuman/jackal/storage"
+
 	"github.com/ortuman/jackal/component"
 	streamerror "github.com/ortuman/jackal/errors"
 	"github.com/ortuman/jackal/log"
 	"github.com/ortuman/jackal/module"
 	"github.com/ortuman/jackal/router"
-	"github.com/ortuman/jackal/storage/repository"
 	"github.com/ortuman/jackal/stream"
 	"github.com/ortuman/jackal/transport"
 )
@@ -31,8 +32,8 @@ type server struct {
 	mods            *module.Modules
 	comps           *component.Components
 	router          router.Router
-	userRep         repository.User
-	blockListRep    repository.BlockList
+	userSt          storage.User
+	blockListSt     storage.BlockList
 	inConnectionsMu sync.Mutex
 	inConnections   map[string]stream.C2S
 	ln              net.Listener
@@ -40,14 +41,14 @@ type server struct {
 	listening       uint32
 }
 
-func newC2SServer(config *Config, mods *module.Modules, comps *component.Components, router router.Router, userRep repository.User, blockListRep repository.BlockList) c2sServer {
+func newC2SServer(config *Config, mods *module.Modules, comps *component.Components, router router.Router, userSt storage.User, blockListSt storage.BlockList) c2sServer {
 	return &server{
 		cfg:           config,
 		mods:          mods,
 		comps:         comps,
 		router:        router,
-		userRep:       userRep,
-		blockListRep:  blockListRep,
+		userSt:        userSt,
+		blockListSt:   blockListSt,
 		inConnections: make(map[string]stream.C2S),
 	}
 }
@@ -117,7 +118,7 @@ func (s *server) startStream(tr transport.Transport, keepAlive time.Duration) {
 		compression:      s.cfg.Compression,
 		onDisconnect:     s.unregisterStream,
 	}
-	stm := newStream(s.nextID(), cfg, tr, s.mods, s.comps, s.router, s.userRep, s.blockListRep)
+	stm := newStream(s.nextID(), cfg, tr, s.mods, s.comps, s.router, s.userSt, s.blockListSt)
 	s.registerStream(stm)
 }
 

@@ -54,8 +54,8 @@ func TestDiscoInfoProvider_Items(t *testing.T) {
 	})
 	rosterRep := memorystorage.NewRoster()
 	dp := &discoInfoProvider{
-		rosterRep: rosterRep,
-		pubSubRep: pubSubRep,
+		rosterSt: rosterRep,
+		pubSubSt: pubSubRep,
 	}
 
 	items, err := dp.Items(context.Background(), j1, j2, "")

@@ -99,9 +99,9 @@ func TestDeleteBlockListItemsError(t *testing.T) {
 	require.Nil(t, mock.ExpectationsWereMet())
 }
 
-func newBlockListMock() (*pgSQLBlockList, sqlmock.Sqlmock) {
+func newBlockListMock() (*BlockList, sqlmock.Sqlmock) {
 	s, sqlMock := newStorageMock()
-	return &pgSQLBlockList{
+	return &BlockList{
 		pgSQLStorage: s,
 	}, sqlMock
 }

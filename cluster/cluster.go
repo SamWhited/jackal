@@ -12,9 +12,8 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/ortuman/jackal/log"
-
 	"github.com/ortuman/jackal/cluster/etcd"
+	"github.com/ortuman/jackal/log"
 )
 
 type Cluster struct {

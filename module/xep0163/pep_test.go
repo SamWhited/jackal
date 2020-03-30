@@ -10,6 +10,8 @@ import (
 	"crypto/tls"
 	"testing"
 
+	"github.com/ortuman/jackal/storage"
+
 	c2srouter "github.com/ortuman/jackal/c2s/router"
 	capsmodel "github.com/ortuman/jackal/model/capabilities"
 	pubsubmodel "github.com/ortuman/jackal/model/pubsub"
@@ -19,7 +21,6 @@ import (
 	"github.com/ortuman/jackal/router"
 	"github.com/ortuman/jackal/router/host"
 	memorystorage "github.com/ortuman/jackal/storage/memory"
-	"github.com/ortuman/jackal/storage/repository"
 	"github.com/ortuman/jackal/stream"
 	"github.com/ortuman/jackal/xmpp"
 	"github.com/ortuman/jackal/xmpp/jid"
@@ -943,16 +944,17 @@ func TestXEP163_FilteredNotifications(t *testing.T) {
 	require.Equal(t, "bnd81g37d61f49fgn581", itemsEl.Elements().Child("item").Attributes().Get("id"))
 }
 
-func setupTest(domain string) (router.Router, repository.Presences, repository.Roster, repository.PubSub) {
+func setupTest(domain string) (router.Router, storage.Presences, storage.Roster, storage.PubSub) {
 	hosts, _ := host.New([]host.Config{{Name: domain, Certificate: tls.Certificate{}}})
 
-	presencesRep := memorystorage.NewPresences()
-	rosterRep := memorystorage.NewRoster()
-	pubSubRep := memorystorage.NewPubSub()
+	presencesSt := memorystorage.NewPresences()
+	rosterSt := memorystorage.NewRoster()
+	pubSubSt := memorystorage.NewPubSub()
 	r, _ := router.New(
 		hosts,
 		c2srouter.New(memorystorage.NewUser(), memorystorage.NewBlockList()),
 		nil,
+		nil,
 	)
-	return r, presencesRep, rosterRep, pubSubRep
+	return r, presencesSt, rosterSt, pubSubSt
 }

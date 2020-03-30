@@ -10,12 +10,13 @@ import (
 	"crypto/tls"
 	"testing"
 
+	"github.com/ortuman/jackal/storage"
+
 	"github.com/ortuman/jackal/router/host"
 
 	c2srouter "github.com/ortuman/jackal/c2s/router"
 	"github.com/ortuman/jackal/router"
 	memorystorage "github.com/ortuman/jackal/storage/memory"
-	"github.com/ortuman/jackal/storage/repository"
 	"github.com/ortuman/jackal/stream"
 	"github.com/ortuman/jackal/xmpp"
 	"github.com/ortuman/jackal/xmpp/jid"
@@ -166,12 +167,13 @@ func TestXEP0049_SetAndGetPrivate(t *testing.T) {
 	require.Equal(t, "exodus:ns:2", q3.Elements().All()[0].Namespace())
 }
 
-func setupTest(domain string) (router.Router, repository.Private) {
+func setupTest(domain string) (router.Router, storage.Private) {
 	hosts, _ := host.New([]host.Config{{Name: domain, Certificate: tls.Certificate{}}})
 	s := memorystorage.NewPrivate()
 	r, _ := router.New(
 		hosts,
 		c2srouter.New(memorystorage.NewUser(), memorystorage.NewBlockList()),
+		nil,
 		nil,
 	)
 	return r, s

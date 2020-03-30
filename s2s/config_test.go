@@ -42,6 +42,7 @@ port: 5999
 func TestConfig(t *testing.T) {
 	cfg := Config{}
 	rawCfg := `
+id: default
 dial_timeout: 300
 connect_timeout: 250
 max_stanza_size: 8192
@@ -50,6 +51,7 @@ max_stanza_size: 8192
 	require.NotNil(t, err) // missing dialback secret
 
 	rawCfg = `
+id: default
 dialback_secret: s3cr3t
 `
 	err = yaml.Unmarshal([]byte(rawCfg), &cfg)
@@ -59,6 +61,7 @@ dialback_secret: s3cr3t
 	require.Equal(t, defaultMaxStanzaSize, cfg.MaxStanzaSize)
 
 	rawCfg = `
+id: default
 dialback_secret: s3cr3t
 dial_timeout: 300
 connect_timeout: 250

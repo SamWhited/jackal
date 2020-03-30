@@ -133,9 +133,9 @@ func TestMySQLStorageDeleteOfflineMessages(t *testing.T) {
 	require.Equal(t, errMySQLStorage, err)
 }
 
-func newOfflineMock() (*mySQLOffline, sqlmock.Sqlmock) {
+func newOfflineMock() (*Offline, sqlmock.Sqlmock) {
 	s, sqlMock := newStorageMock()
-	return &mySQLOffline{
+	return &Offline{
 		mySQLStorage: s,
 		pool:         pool.NewBufferPool(),
 	}, sqlMock

@@ -6,24 +6,99 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 
 	memorystorage "github.com/ortuman/jackal/storage/memory"
 	"github.com/ortuman/jackal/storage/mysql"
 	"github.com/ortuman/jackal/storage/pgsql"
-	"github.com/ortuman/jackal/storage/repository"
 )
 
+type Storage struct {
+	User
+	Roster
+	Presences
+	VCard
+	Private
+	BlockList
+	PubSub
+	Offline
+
+	shutdownFn            func(ctx context.Context) error
+	isClusterCompatibleFn func() bool
+}
+
+func (s *Storage) Shutdown(ctx context.Context) error { return s.shutdownFn(ctx) }
+
+func (s *Storage) IsClusterCompatible() bool { return s.isClusterCompatibleFn() }
+
 // New initializes configured storage type and returns associated container.
-func New(config *Config) (repository.Container, error) {
+func New(config *Config) (*Storage, error) {
 	switch config.Type {
 	case MySQL:
-		return mysql.New(config.MySQL)
+		return initMySQL(config.MySQL)
 	case PostgreSQL:
-		return pgsql.New(config.PostgreSQL)
+		return initPgSQL(config.PostgreSQL)
 	case Memory:
-		return memorystorage.New()
+		return initMemoryStorage()
 	default:
 		return nil, fmt.Errorf("storage: unrecognized storage type: %d", config.Type)
 	}
+}
+
+func initMySQL(config *mysql.Config) (*Storage, error) {
+	mySQLStorage, err := mysql.New(config)
+	if err != nil {
+		return nil, err
+	}
+	return &Storage{
+		User:                  mySQLStorage.User,
+		Roster:                mySQLStorage.Roster,
+		Presences:             mySQLStorage.Presences,
+		VCard:                 mySQLStorage.VCard,
+		Private:               mySQLStorage.Private,
+		BlockList:             mySQLStorage.BlockList,
+		PubSub:                mySQLStorage.PubSub,
+		Offline:               mySQLStorage.Offline,
+		shutdownFn:            mySQLStorage.Shutdown,
+		isClusterCompatibleFn: mySQLStorage.IsClusterCompatible,
+	}, nil
+}
+
+func initPgSQL(config *pgsql.Config) (*Storage, error) {
+	pgSQLStorage, err := pgsql.New(config)
+	if err != nil {
+		return nil, err
+	}
+	return &Storage{
+		User:                  pgSQLStorage.User,
+		Roster:                pgSQLStorage.Roster,
+		Presences:             pgSQLStorage.Presences,
+		VCard:                 pgSQLStorage.VCard,
+		Private:               pgSQLStorage.Private,
+		BlockList:             pgSQLStorage.BlockList,
+		PubSub:                pgSQLStorage.PubSub,
+		Offline:               pgSQLStorage.Offline,
+		shutdownFn:            pgSQLStorage.Shutdown,
+		isClusterCompatibleFn: pgSQLStorage.IsClusterCompatible,
+	}, nil
+}
+
+func initMemoryStorage() (*Storage, error) {
+	memStorage, err := memorystorage.New()
+	if err != nil {
+		return nil, err
+	}
+	return &Storage{
+		User:                  memStorage.User,
+		Roster:                memStorage.Roster,
+		Presences:             memStorage.Presences,
+		VCard:                 memStorage.VCard,
+		Private:               memStorage.Private,
+		BlockList:             memStorage.BlockList,
+		PubSub:                memStorage.PubSub,
+		Offline:               memStorage.Offline,
+		shutdownFn:            memStorage.Shutdown,
+		isClusterCompatibleFn: memStorage.IsClusterCompatible,
+	}, nil
 }

@@ -9,7 +9,7 @@ import (
 	"context"
 	"testing"
 
-	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/ortuman/jackal/model"
 	"github.com/stretchr/testify/require"
 )
@@ -76,9 +76,9 @@ func TestMySQLStorageDeleteBlockListItems(t *testing.T) {
 	require.Equal(t, errMySQLStorage, err)
 }
 
-func newBlockListMock() (*mySQLBlockList, sqlmock.Sqlmock) {
+func newBlockListMock() (*BlockList, sqlmock.Sqlmock) {
 	s, sqlMock := newStorageMock()
-	return &mySQLBlockList{
+	return &BlockList{
 		mySQLStorage: s,
 	}, sqlMock
 }

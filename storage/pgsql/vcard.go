@@ -14,18 +14,18 @@ import (
 	"github.com/ortuman/jackal/xmpp"
 )
 
-type pgSQLVCard struct {
+type VCard struct {
 	*pgSQLStorage
 }
 
-func newVCard(db *sql.DB) *pgSQLVCard {
-	return &pgSQLVCard{
+func newVCard(db *sql.DB) *VCard {
+	return &VCard{
 		pgSQLStorage: newStorage(db),
 	}
 }
 
 // UpsertVCard inserts a new vCard element into storage, or updates it in case it's been previously inserted.
-func (s *pgSQLVCard) UpsertVCard(ctx context.Context, vCard xmpp.XElement, username string) error {
+func (s *VCard) UpsertVCard(ctx context.Context, vCard xmpp.XElement, username string) error {
 	rawXML := vCard.String()
 
 	q := sq.Insert("vcards").
@@ -38,7 +38,7 @@ func (s *pgSQLVCard) UpsertVCard(ctx context.Context, vCard xmpp.XElement, usern
 }
 
 // FetchVCard retrieves from storage a vCard element associated to a given user.
-func (s *pgSQLVCard) FetchVCard(ctx context.Context, username string) (xmpp.XElement, error) {
+func (s *VCard) FetchVCard(ctx context.Context, username string) (xmpp.XElement, error) {
 	q := sq.Select("vcard").From("vcards").Where(sq.Eq{"username": username})
 
 	var vCard string

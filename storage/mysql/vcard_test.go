@@ -71,9 +71,9 @@ func TestMySQLStorageFetchVCard(t *testing.T) {
 	require.Nil(t, vCard)
 }
 
-func newVCardMock() (*mySQLVCard, sqlmock.Sqlmock) {
+func newVCardMock() (*VCard, sqlmock.Sqlmock) {
 	s, sqlMock := newStorageMock()
-	return &mySQLVCard{
+	return &VCard{
 		mySQLStorage: s,
 	}, sqlMock
 }

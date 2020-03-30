@@ -14,13 +14,13 @@ import (
 	"github.com/ortuman/jackal/xmpp"
 )
 
-type pgSQLPrivate struct {
+type Private struct {
 	*pgSQLStorage
 	pool *pool.BufferPool
 }
 
-func newPrivate(db *sql.DB) *pgSQLPrivate {
-	return &pgSQLPrivate{
+func newPrivate(db *sql.DB) *Private {
+	return &Private{
 		pgSQLStorage: newStorage(db),
 		pool:         pool.NewBufferPool(),
 	}
@@ -28,7 +28,7 @@ func newPrivate(db *sql.DB) *pgSQLPrivate {
 
 // UpsertPrivateXML inserts a new private element into storage,
 // or updates it in case it's been previously inserted.
-func (s *pgSQLPrivate) UpsertPrivateXML(ctx context.Context, privateXML []xmpp.XElement, namespace string, username string) error {
+func (s *Private) UpsertPrivateXML(ctx context.Context, privateXML []xmpp.XElement, namespace string, username string) error {
 	buf := s.pool.Get()
 	defer s.pool.Put(buf)
 
@@ -50,7 +50,7 @@ func (s *pgSQLPrivate) UpsertPrivateXML(ctx context.Context, privateXML []xmpp.X
 }
 
 // FetchPrivateXML retrieves from storage a private element.
-func (s *pgSQLPrivate) FetchPrivateXML(ctx context.Context, namespace string, username string) ([]xmpp.XElement, error) {
+func (s *Private) FetchPrivateXML(ctx context.Context, namespace string, username string) ([]xmpp.XElement, error) {
 	q := sq.Select("data").
 		From("private_storage").
 		Where(sq.And{sq.Eq{"username": username}, sq.Eq{"namespace": namespace}})

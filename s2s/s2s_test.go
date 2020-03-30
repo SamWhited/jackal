@@ -193,7 +193,7 @@ func (a fakeAddr) String() string  { return "str" }
 
 func setupTestRouter(domain string) (router.Router, *host.Hosts) {
 	hosts := setupTestHosts(domain)
-	r, _ := router.New(hosts, c2srouter.New(memorystorage.NewUser(), memorystorage.NewBlockList()), nil)
+	r, _ := router.New(hosts, c2srouter.New(memorystorage.NewUser(), memorystorage.NewBlockList()), nil, nil)
 	return r, hosts
 }
 
@@ -248,6 +248,6 @@ func setupTestS2S() (*S2S, *fakeS2SServer) {
 	createS2SServer = func(_ *Config, _ *module.Modules, _ newOutFunc, _ router.Router) s2sServer {
 		return srv
 	}
-	r, _ := router.New(nil, nil, nil)
+	r, _ := router.New(nil, nil, nil, nil)
 	return New(&Config{}, &module.Modules{}, NewOutProvider(&Config{}, nil), r), srv
 }

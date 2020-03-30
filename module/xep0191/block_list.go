@@ -8,13 +8,14 @@ package xep0191
 import (
 	"context"
 
+	"github.com/ortuman/jackal/storage"
+
 	"github.com/ortuman/jackal/log"
 	"github.com/ortuman/jackal/model"
 	rostermodel "github.com/ortuman/jackal/model/roster"
 	"github.com/ortuman/jackal/module/xep0030"
 	"github.com/ortuman/jackal/module/xep0115"
 	"github.com/ortuman/jackal/router"
-	"github.com/ortuman/jackal/storage/repository"
 	"github.com/ortuman/jackal/stream"
 	"github.com/ortuman/jackal/util/runqueue"
 	"github.com/ortuman/jackal/xmpp"
@@ -30,21 +31,21 @@ const (
 
 // BlockingCommand represents a blocking command IQ handler module.
 type BlockingCommand struct {
-	runQueue     *runqueue.RunQueue
-	router       router.Router
-	blockListRep repository.BlockList
-	rosterRep    repository.Roster
-	entityCaps   *xep0115.EntityCaps
+	runQueue    *runqueue.RunQueue
+	router      router.Router
+	blockListSt storage.BlockList
+	rosterSt    storage.Roster
+	entityCaps  *xep0115.EntityCaps
 }
 
 // New returns a blocking command IQ handler module.
-func New(disco *xep0030.DiscoInfo, entityCaps *xep0115.EntityCaps, router router.Router, rosterRep repository.Roster, blockListRep repository.BlockList) *BlockingCommand {
+func New(disco *xep0030.DiscoInfo, entityCaps *xep0115.EntityCaps, router router.Router, rosterSt storage.Roster, blockListSt storage.BlockList) *BlockingCommand {
 	b := &BlockingCommand{
-		runQueue:     runqueue.New("xep0191"),
-		router:       router,
-		blockListRep: blockListRep,
-		rosterRep:    rosterRep,
-		entityCaps:   entityCaps,
+		runQueue:    runqueue.New("xep0191"),
+		router:      router,
+		blockListSt: blockListSt,
+		rosterSt:    rosterSt,
+		entityCaps:  entityCaps,
 	}
 	if disco != nil {
 		disco.RegisterServerFeature(blockingCommandNamespace)
@@ -96,7 +97,7 @@ func (x *BlockingCommand) processIQ(ctx context.Context, iq *xmpp.IQ, stm stream
 
 func (x *BlockingCommand) sendBlockList(ctx context.Context, iq *xmpp.IQ, stm stream.C2S) {
 	fromJID := iq.FromJID()
-	blItems, err := x.blockListRep.FetchBlockListItems(ctx, fromJID.Node())
+	blItems, err := x.blockListSt.FetchBlockListItems(ctx, fromJID.Node())
 	if err != nil {
 		log.Error(err)
 		stm.SendElement(ctx, iq.InternalServerError())
@@ -138,7 +139,7 @@ func (x *BlockingCommand) block(ctx context.Context, iq *xmpp.IQ, block xmpp.XEl
 		if x.isJIDInBlockList(j, blItems) {
 			continue
 		}
-		err := x.blockListRep.InsertBlockListItem(ctx, &model.BlockListItem{
+		err := x.blockListSt.InsertBlockListItem(ctx, &model.BlockListItem{
 			Username: username,
 			JID:      j.String(),
 		})
@@ -175,7 +176,7 @@ func (x *BlockingCommand) unblock(ctx context.Context, iq *xmpp.IQ, unblock xmpp
 			if !x.isJIDInBlockList(j, blItems) {
 				continue
 			}
-			if err := x.blockListRep.DeleteBlockListItem(ctx, &model.BlockListItem{
+			if err := x.blockListSt.DeleteBlockListItem(ctx, &model.BlockListItem{
 				Username: username,
 				JID:      j.String(),
 			}); err != nil {
@@ -187,7 +188,7 @@ func (x *BlockingCommand) unblock(ctx context.Context, iq *xmpp.IQ, unblock xmpp
 		}
 	} else { // remove all block list items
 		for _, blItem := range blItems {
-			if err := x.blockListRep.DeleteBlockListItem(ctx, &blItem); err != nil {
+			if err := x.blockListSt.DeleteBlockListItem(ctx, &blItem); err != nil {
 				log.Error(err)
 				stm.SendElement(ctx, iq.InternalServerError())
 				return
@@ -257,11 +258,11 @@ func (x *BlockingCommand) isSubscribedTo(jid *jid.JID, ris []rostermodel.Item) b
 }
 
 func (x *BlockingCommand) fetchBlockListAndRosterItems(ctx context.Context, username string) ([]model.BlockListItem, []rostermodel.Item, error) {
-	blItems, err := x.blockListRep.FetchBlockListItems(ctx, username)
+	blItems, err := x.blockListSt.FetchBlockListItems(ctx, username)
 	if err != nil {
 		return nil, nil, err
 	}
-	ris, _, err := x.rosterRep.FetchRosterItems(ctx, username)
+	ris, _, err := x.rosterSt.FetchRosterItems(ctx, username)
 	if err != nil {
 		return nil, nil, err
 	}

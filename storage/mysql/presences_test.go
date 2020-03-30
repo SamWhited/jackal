@@ -172,9 +172,9 @@ func TestMySQLPresences_FetchCapabilities(t *testing.T) {
 	require.Nil(t, caps)
 }
 
-func newPresencesMock() (*mySQLPresences, sqlmock.Sqlmock) {
+func newPresencesMock() (*Presences, sqlmock.Sqlmock) {
 	s, sqlMock := newStorageMock()
-	return &mySQLPresences{
+	return &Presences{
 		mySQLStorage: s,
 		pool:         pool.NewBufferPool(),
 	}, sqlMock

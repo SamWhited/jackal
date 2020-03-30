@@ -10,6 +10,8 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	"github.com/ortuman/jackal/storage"
+
 	"github.com/google/uuid"
 	"github.com/ortuman/jackal/log"
 	pubsubmodel "github.com/ortuman/jackal/model/pubsub"
@@ -18,7 +20,6 @@ import (
 	"github.com/ortuman/jackal/module/xep0030"
 	"github.com/ortuman/jackal/module/xep0115"
 	"github.com/ortuman/jackal/router"
-	"github.com/ortuman/jackal/storage/repository"
 	"github.com/ortuman/jackal/util/runqueue"
 	"github.com/ortuman/jackal/xmpp"
 	"github.com/ortuman/jackal/xmpp/jid"
@@ -64,19 +65,19 @@ type commandContext struct {
 type Pep struct {
 	runQueue   *runqueue.RunQueue
 	router     router.Router
-	rosterRep  repository.Roster
-	pubSubRep  repository.PubSub
+	rosterSt   storage.Roster
+	pubSubSt   storage.PubSub
 	disco      *xep0030.DiscoInfo
 	entityCaps *xep0115.EntityCaps
 	hosts      []string
 }
 
 // New returns a PEP command IQ handler module.
-func New(disco *xep0030.DiscoInfo, presenceHub *xep0115.EntityCaps, router router.Router, rosterRep repository.Roster, pubSubRep repository.PubSub) *Pep {
+func New(disco *xep0030.DiscoInfo, presenceHub *xep0115.EntityCaps, router router.Router, rosterSt storage.Roster, pubSubSt storage.PubSub) *Pep {
 	p := &Pep{
 		runQueue:   runqueue.New("xep0163"),
-		rosterRep:  rosterRep,
-		pubSubRep:  pubSubRep,
+		rosterSt:   rosterSt,
+		pubSubSt:   pubSubSt,
 		router:     router,
 		disco:      disco,
 		entityCaps: presenceHub,
@@ -172,14 +173,14 @@ func (x *Pep) registerDiscoItemHandlers(ctx context.Context) error {
 		x.disco.UnregisterProvider(h)
 	}
 	// register current ones
-	hosts, err := x.pubSubRep.FetchHosts(ctx)
+	hosts, err := x.pubSubSt.FetchHosts(ctx)
 	if err != nil {
 		return err
 	}
 	for _, host := range hosts {
 		x.disco.RegisterProvider(host, &discoInfoProvider{
-			rosterRep: x.rosterRep,
-			pubSubRep: x.pubSubRep,
+			rosterSt: x.rosterSt,
+			pubSubSt: x.pubSubSt,
 		})
 	}
 	x.hosts = hosts
@@ -187,7 +188,7 @@ func (x *Pep) registerDiscoItemHandlers(ctx context.Context) error {
 }
 
 func (x *Pep) subscribeToAll(ctx context.Context, host string, subJID *jid.JID) error {
-	nodes, err := x.pubSubRep.FetchNodes(ctx, host)
+	nodes, err := x.pubSubSt.FetchNodes(ctx, host)
 	if err != nil {
 		return err
 	}
@@ -207,13 +208,13 @@ func (x *Pep) subscribeTo(ctx context.Context, n *pubsubmodel.Node, subJID *jid.
 		JID:          subJID.ToBareJID().String(),
 		Subscription: pubsubmodel.Subscribed,
 	}
-	if err := x.pubSubRep.UpsertNodeSubscription(ctx, &sub, n.Host, n.Name); err != nil {
+	if err := x.pubSubSt.UpsertNodeSubscription(ctx, &sub, n.Host, n.Name); err != nil {
 		return err
 	}
 	log.Infof("pep: subscription created (host: %s, node_id: %s, jid: %s)", n.Host, n.Name, subJID)
 
 	// notify subscription update
-	affiliations, err := x.pubSubRep.FetchNodeAffiliations(ctx, n.Host, n.Name)
+	affiliations, err := x.pubSubSt.FetchNodeAffiliations(ctx, n.Host, n.Name)
 	if err != nil {
 		return err
 	}
@@ -242,7 +243,7 @@ func (x *Pep) subscribeTo(ctx context.Context, n *pubsubmodel.Node, subJID *jid.
 			accessModel:         n.Options.AccessModel,
 			rosterAllowedGroups: n.Options.RosterGroupsAllowed,
 			affiliation:         subAff,
-			rosterRep:           x.rosterRep,
+			rosterSt:            x.rosterSt,
 		}
 		return x.sendLastPublishedItem(ctx, subJID, accessChecker, n.Host, n.Name, n.Options.NotificationType)
 	}
@@ -250,12 +251,12 @@ func (x *Pep) subscribeTo(ctx context.Context, n *pubsubmodel.Node, subJID *jid.
 }
 
 func (x *Pep) unsubscribeFromAll(ctx context.Context, host string, subJID *jid.JID) error {
-	nodes, err := x.pubSubRep.FetchNodes(ctx, host)
+	nodes, err := x.pubSubSt.FetchNodes(ctx, host)
 	if err != nil {
 		return err
 	}
 	for _, n := range nodes {
-		if err := x.pubSubRep.DeleteNodeSubscription(ctx, subJID.ToBareJID().String(), host, n.Name); err != nil {
+		if err := x.pubSubSt.DeleteNodeSubscription(ctx, subJID.ToBareJID().String(), host, n.Name); err != nil {
 			return err
 		}
 		log.Infof("pep: subscription removed (host: %s, node_id: %s, jid: %s)", host, n.Name, subJID.ToBareJID().String())
@@ -264,7 +265,7 @@ func (x *Pep) unsubscribeFromAll(ctx context.Context, host string, subJID *jid.J
 }
 
 func (x *Pep) deliverLastItems(ctx context.Context, jid *jid.JID) error {
-	nodes, err := x.pubSubRep.FetchSubscribedNodes(ctx, jid.ToBareJID().String())
+	nodes, err := x.pubSubSt.FetchSubscribedNodes(ctx, jid.ToBareJID().String())
 	if err != nil {
 		return err
 	}
@@ -272,7 +273,7 @@ func (x *Pep) deliverLastItems(ctx context.Context, jid *jid.JID) error {
 		if node.Options.SendLastPublishedItem != pubsubmodel.OnSubAndPresence {
 			continue
 		}
-		aff, err := x.pubSubRep.FetchNodeAffiliation(ctx, node.Host, node.Name, jid.ToBareJID().String())
+		aff, err := x.pubSubSt.FetchNodeAffiliation(ctx, node.Host, node.Name, jid.ToBareJID().String())
 		if err != nil {
 			return err
 		}
@@ -282,7 +283,7 @@ func (x *Pep) deliverLastItems(ctx context.Context, jid *jid.JID) error {
 			accessModel:         node.Options.AccessModel,
 			rosterAllowedGroups: node.Options.RosterGroupsAllowed,
 			affiliation:         aff,
-			rosterRep:           x.rosterRep,
+			rosterSt:            x.rosterSt,
 		}
 		if err := x.sendLastPublishedItem(ctx, jid, accessChecker, node.Host, node.Name, node.Options.NotificationType); err != nil {
 			return err
@@ -482,7 +483,7 @@ func (x *Pep) sendConfigurationForm(ctx context.Context, cmdCtx *commandContext,
 	configureNode := xmpp.NewElementName("configure")
 	configureNode.SetAttribute("node", cmdCtx.nodeID)
 
-	rosterGroups, err := x.rosterRep.FetchRosterGroups(ctx, iq.ToJID().Node())
+	rosterGroups, err := x.rosterSt.FetchRosterGroups(ctx, iq.ToJID().Node())
 	if err != nil {
 		log.Error(err)
 		_ = x.router.Route(ctx, iq.InternalServerError())
@@ -521,7 +522,7 @@ func (x *Pep) configure(ctx context.Context, cmdCtx *commandContext, cmdElem xmp
 	cmdCtx.node.Options = *nodeOpts
 
 	// update node config
-	if err := x.pubSubRep.UpsertNode(ctx, cmdCtx.node); err != nil {
+	if err := x.pubSubSt.UpsertNode(ctx, cmdCtx.node); err != nil {
 		log.Error(err)
 		_ = x.router.Route(ctx, iq.InternalServerError())
 		return
@@ -552,7 +553,7 @@ func (x *Pep) configure(ctx context.Context, cmdCtx *commandContext, cmdElem xmp
 
 func (x *Pep) delete(ctx context.Context, cmdCtx *commandContext, iq *xmpp.IQ) {
 	// delete node
-	if err := x.pubSubRep.DeleteNode(ctx, cmdCtx.host, cmdCtx.nodeID); err != nil {
+	if err := x.pubSubSt.DeleteNode(ctx, cmdCtx.host, cmdCtx.nodeID); err != nil {
 		log.Error(err)
 		_ = x.router.Route(ctx, iq.InternalServerError())
 		return
@@ -594,7 +595,7 @@ func (x *Pep) subscribe(ctx context.Context, cmdCtx *commandContext, cmdEl xmpp.
 		JID:          subJID,
 		Subscription: pubsubmodel.Subscribed,
 	}
-	err := x.pubSubRep.UpsertNodeSubscription(ctx, &sub, cmdCtx.host, cmdCtx.nodeID)
+	err := x.pubSubSt.UpsertNodeSubscription(ctx, &sub, cmdCtx.host, cmdCtx.nodeID)
 
 	if err != nil {
 		log.Error(err)
@@ -653,7 +654,7 @@ func (x *Pep) unsubscribe(ctx context.Context, cmdCtx *commandContext, cmdEl xmp
 		return
 	}
 	// delete subscription
-	if err := x.pubSubRep.DeleteNodeSubscription(ctx, subJID, cmdCtx.host, cmdCtx.nodeID); err != nil {
+	if err := x.pubSubSt.DeleteNodeSubscription(ctx, subJID, cmdCtx.host, cmdCtx.nodeID); err != nil {
 		log.Error(err)
 		_ = x.router.Route(ctx, iq.InternalServerError())
 		return
@@ -717,7 +718,7 @@ func (x *Pep) publish(ctx context.Context, cmdCtx *commandContext, cmdEl xmpp.XE
 	// persist node item
 	opts := cmdCtx.node.Options
 	if opts.PersistItems {
-		err := x.pubSubRep.UpsertNodeItem(ctx, &pubsubmodel.Item{
+		err := x.pubSubSt.UpsertNodeItem(ctx, &pubsubmodel.Item{
 			ID:        itemID,
 			Publisher: iq.FromJID().ToBareJID().String(),
 			Payload:   itemEl.Elements().All()[0],
@@ -784,9 +785,9 @@ func (x *Pep) retrieveItems(ctx context.Context, cmdCtx *commandContext, cmdEl x
 	var err error
 
 	if len(itemIDs) > 0 {
-		items, err = x.pubSubRep.FetchNodeItemsWithIDs(ctx, cmdCtx.host, cmdCtx.nodeID, itemIDs)
+		items, err = x.pubSubSt.FetchNodeItemsWithIDs(ctx, cmdCtx.host, cmdCtx.nodeID, itemIDs)
 	} else {
-		items, err = x.pubSubRep.FetchNodeItems(ctx, cmdCtx.host, cmdCtx.nodeID)
+		items, err = x.pubSubSt.FetchNodeItems(ctx, cmdCtx.host, cmdCtx.nodeID)
 	}
 	if err != nil {
 		log.Error(err)
@@ -850,9 +851,9 @@ func (x *Pep) updateAffiliations(ctx context.Context, cmdCtx *commandContext, cm
 		var err error
 		switch aff.Affiliation {
 		case pubsubmodel.Owner, pubsubmodel.Member, pubsubmodel.Publisher, pubsubmodel.Outcast:
-			err = x.pubSubRep.UpsertNodeAffiliation(ctx, &aff, cmdCtx.host, cmdCtx.nodeID)
+			err = x.pubSubSt.UpsertNodeAffiliation(ctx, &aff, cmdCtx.host, cmdCtx.nodeID)
 		case pubsubmodel.None:
-			err = x.pubSubRep.DeleteNodeAffiliation(ctx, aff.JID, cmdCtx.host, cmdCtx.nodeID)
+			err = x.pubSubSt.DeleteNodeAffiliation(ctx, aff.JID, cmdCtx.host, cmdCtx.nodeID)
 		default:
 			_ = x.router.Route(ctx, iq.BadRequestError())
 			return
@@ -906,9 +907,9 @@ func (x *Pep) updateSubscriptions(ctx context.Context, cmdCtx *commandContext, c
 		var err error
 		switch sub.Subscription {
 		case pubsubmodel.Subscribed:
-			err = x.pubSubRep.UpsertNodeSubscription(ctx, &sub, cmdCtx.host, cmdCtx.nodeID)
+			err = x.pubSubSt.UpsertNodeSubscription(ctx, &sub, cmdCtx.host, cmdCtx.nodeID)
 		case pubsubmodel.None:
-			err = x.pubSubRep.DeleteNodeSubscription(ctx, sub.JID, cmdCtx.host, cmdCtx.nodeID)
+			err = x.pubSubSt.DeleteNodeSubscription(ctx, sub.JID, cmdCtx.host, cmdCtx.nodeID)
 		default:
 			_ = x.router.Route(ctx, iq.BadRequestError())
 			return
@@ -1027,7 +1028,7 @@ func (x *Pep) withCommandContext(ctx context.Context, opts commandOptions, cmdEl
 	cmdCtx.isAccountOwner = fromJID == host
 
 	// fetch node
-	node, err := x.pubSubRep.FetchNode(ctx, host, nodeID)
+	node, err := x.pubSubSt.FetchNode(ctx, host, nodeID)
 	if err != nil {
 		log.Error(err)
 		_ = x.router.Route(ctx, iq.InternalServerError())
@@ -1044,7 +1045,7 @@ func (x *Pep) withCommandContext(ctx context.Context, opts commandOptions, cmdEl
 	cmdCtx.node = node
 
 	// fetch affiliation
-	aff, err := x.pubSubRep.FetchNodeAffiliation(ctx, host, nodeID, fromJID)
+	aff, err := x.pubSubSt.FetchNodeAffiliation(ctx, host, nodeID, fromJID)
 	if err != nil {
 		log.Error(err)
 		_ = x.router.Route(ctx, iq.InternalServerError())
@@ -1056,7 +1057,7 @@ func (x *Pep) withCommandContext(ctx context.Context, opts commandOptions, cmdEl
 		accessModel:         node.Options.AccessModel,
 		rosterAllowedGroups: node.Options.RosterGroupsAllowed,
 		affiliation:         aff,
-		rosterRep:           x.rosterRep,
+		rosterSt:            x.rosterSt,
 	}
 	// check access
 	if opts.checkAccess && !cmdCtx.isAccountOwner {
@@ -1103,7 +1104,7 @@ func (x *Pep) withCommandContext(ctx context.Context, opts commandOptions, cmdEl
 	}
 	// fetch subscriptions
 	if opts.includeSubscriptions {
-		subscriptions, err := x.pubSubRep.FetchNodeSubscriptions(ctx, host, nodeID)
+		subscriptions, err := x.pubSubSt.FetchNodeSubscriptions(ctx, host, nodeID)
 		if err != nil {
 			log.Error(err)
 			_ = x.router.Route(ctx, iq.InternalServerError())
@@ -1113,7 +1114,7 @@ func (x *Pep) withCommandContext(ctx context.Context, opts commandOptions, cmdEl
 	}
 	// fetch affiliations
 	if opts.includeAffiliations {
-		affiliations, err := x.pubSubRep.FetchNodeAffiliations(ctx, host, nodeID)
+		affiliations, err := x.pubSubSt.FetchNodeAffiliations(ctx, host, nodeID)
 		if err != nil {
 			log.Error(err)
 			_ = x.router.Route(ctx, iq.InternalServerError())
@@ -1126,7 +1127,7 @@ func (x *Pep) withCommandContext(ctx context.Context, opts commandOptions, cmdEl
 
 func (x *Pep) createNode(ctx context.Context, node *pubsubmodel.Node) error {
 	// create node
-	if err := x.pubSubRep.UpsertNode(ctx, node); err != nil {
+	if err := x.pubSubSt.UpsertNode(ctx, node); err != nil {
 		return err
 	}
 	// create owner affiliation
@@ -1134,7 +1135,7 @@ func (x *Pep) createNode(ctx context.Context, node *pubsubmodel.Node) error {
 		JID:         node.Host,
 		Affiliation: pubsubmodel.Owner,
 	}
-	if err := x.pubSubRep.UpsertNodeAffiliation(ctx, ownerAffiliation, node.Host, node.Name); err != nil {
+	if err := x.pubSubSt.UpsertNodeAffiliation(ctx, ownerAffiliation, node.Host, node.Name); err != nil {
 		return err
 	}
 	// create owner subscription
@@ -1143,7 +1144,7 @@ func (x *Pep) createNode(ctx context.Context, node *pubsubmodel.Node) error {
 		JID:          node.Host,
 		Subscription: pubsubmodel.Subscribed,
 	}
-	if err := x.pubSubRep.UpsertNodeSubscription(ctx, ownerSub, node.Host, node.Name); err != nil {
+	if err := x.pubSubSt.UpsertNodeSubscription(ctx, ownerSub, node.Host, node.Name); err != nil {
 		return err
 	}
 	// auto-subscribe roster members
@@ -1151,7 +1152,7 @@ func (x *Pep) createNode(ctx context.Context, node *pubsubmodel.Node) error {
 	if err != nil {
 		return err
 	}
-	rosterItems, _, err := x.rosterRep.FetchRosterItems(ctx, j.Node())
+	rosterItems, _, err := x.rosterSt.FetchRosterItems(ctx, j.Node())
 	if err != nil {
 		return err
 	}
@@ -1169,14 +1170,14 @@ func (x *Pep) createNode(ctx context.Context, node *pubsubmodel.Node) error {
 }
 
 func (x *Pep) sendLastPublishedItem(ctx context.Context, toJID *jid.JID, accessChecker *accessChecker, host, nodeID, notificationType string) error {
-	node, err := x.pubSubRep.FetchNode(ctx, host, nodeID)
+	node, err := x.pubSubSt.FetchNode(ctx, host, nodeID)
 	if err != nil {
 		return err
 	}
 	if node == nil {
 		return nil
 	}
-	lastItem, err := x.pubSubRep.FetchNodeLastItem(ctx, host, nodeID)
+	lastItem, err := x.pubSubSt.FetchNodeLastItem(ctx, host, nodeID)
 	if err != nil {
 		return err
 	}

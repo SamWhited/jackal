@@ -21,7 +21,7 @@ import (
 func TestServerProvider_Features(t *testing.T) {
 	r, rosterRep := setupTest("jackal.im")
 
-	var sp = serverProvider{router: r, rosterRep: rosterRep}
+	var sp = serverProvider{router: r, rosterSt: rosterRep}
 
 	sp.registerServerFeature("sf0")
 	sp.registerServerFeature("sf1")
@@ -61,7 +61,7 @@ func TestServerProvider_Features(t *testing.T) {
 func TestServerProvider_Identities(t *testing.T) {
 	r, rosterRep := setupTest("jackal.im")
 
-	var sp = serverProvider{router: r, rosterRep: rosterRep}
+	var sp = serverProvider{router: r, rosterSt: rosterRep}
 
 	srvJID, _ := jid.New("", "jackal.im", "", true)
 	accJID, _ := jid.New("ortuman", "jackal.im", "garden", true)
@@ -78,7 +78,7 @@ func TestServerProvider_Identities(t *testing.T) {
 func TestServerProvider_Items(t *testing.T) {
 	r, rosterRep := setupTest("jackal.im")
 
-	var sp = serverProvider{router: r, rosterRep: rosterRep}
+	var sp = serverProvider{router: r, rosterSt: rosterRep}
 
 	srvJID, _ := jid.New("", "jackal.im", "", true)
 	accJID1, _ := jid.New("ortuman", "jackal.im", "garden", true)

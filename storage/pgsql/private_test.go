@@ -92,9 +92,9 @@ func TestFetchPrivateXML(t *testing.T) {
 	require.Equal(t, 0, len(elems))
 }
 
-func newPrivateMock() (*pgSQLPrivate, sqlmock.Sqlmock) {
+func newPrivateMock() (*Private, sqlmock.Sqlmock) {
 	s, sqlMock := newStorageMock()
-	return &pgSQLPrivate{
+	return &Private{
 		pgSQLStorage: s,
 		pool:         pool.NewBufferPool(),
 	}, sqlMock

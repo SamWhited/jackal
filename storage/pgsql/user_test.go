@@ -130,9 +130,9 @@ func TestUserExists(t *testing.T) {
 	require.Equal(t, errMocked, err)
 }
 
-func newUserMock() (*pgSQLUser, sqlmock.Sqlmock) {
+func newUserMock() (*User, sqlmock.Sqlmock) {
 	s, sqlMock := newStorageMock()
-	return &pgSQLUser{
+	return &User{
 		pgSQLStorage: s,
 		pool:         pool.NewBufferPool(),
 	}, sqlMock

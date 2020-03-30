@@ -18,7 +18,7 @@ import (
 
 func TestS2SSocketServer(t *testing.T) {
 	h := setupTestHosts(jackaDomain)
-	r, _ := router.New(h, nil, nil)
+	r, _ := router.New(h, nil, nil, nil)
 
 	errCh := make(chan error)
 	cfg := Config{

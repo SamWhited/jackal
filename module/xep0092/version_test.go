@@ -85,6 +85,7 @@ func setupTest() router.Router {
 		hosts,
 		c2srouter.New(memorystorage.NewUser(), memorystorage.NewBlockList()),
 		nil,
+		nil,
 	)
 	return r
 }

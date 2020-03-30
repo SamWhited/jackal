@@ -14,7 +14,6 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	_ "github.com/lib/pq" // PostgreSQL driver
 	"github.com/ortuman/jackal/log"
-	"github.com/ortuman/jackal/storage/repository"
 )
 
 // pingInterval defines how often to check the connection
@@ -23,15 +22,15 @@ var pingInterval = 15 * time.Second
 // pingTimeout defines how long to wait for pong from server
 var pingTimeout = 10 * time.Second
 
-type pgSQLContainer struct {
-	user      *pgSQLUser
-	roster    *pgSQLRoster
-	presences *pgSQLPresences
-	vCard     *pgSQLVCard
-	priv      *pgSQLPrivate
-	blockList *pgSQLBlockList
-	pubSub    *pgSQLPubSub
-	offline   *pgSQLOffline
+type Storage struct {
+	*User
+	*Roster
+	*Presences
+	*VCard
+	*Private
+	*BlockList
+	*PubSub
+	*Offline
 
 	h          *sql.DB
 	cancelPing context.CancelFunc
@@ -39,50 +38,43 @@ type pgSQLContainer struct {
 }
 
 // New initializes PgSQL storage and returns associated container.
-func New(cfg *Config) (repository.Container, error) {
-	c := &pgSQLContainer{doneCh: make(chan chan bool, 1)}
-
+func New(cfg *Config) (*Storage, error) {
 	var err error
 
 	sq.StatementBuilder = sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s", cfg.User, cfg.Password, cfg.Host, cfg.Database, cfg.SSLMode)
 
-	c.h, err = sql.Open("postgres", dsn)
+	h, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, err
 	}
-	c.h.SetMaxOpenConns(cfg.PoolSize) // set max opened connection count
+	h.SetMaxOpenConns(cfg.PoolSize) // set max opened connection count
 
+	ctx, cancel := context.WithCancel(context.Background())
+
+	c := &Storage{
+		User:       newUser(h),
+		Roster:     newRoster(h),
+		Presences:  newPresences(h),
+		VCard:      newVCard(h),
+		Private:    newPrivate(h),
+		BlockList:  newBlockList(h),
+		PubSub:     newPubSub(h),
+		Offline:    newOffline(h),
+		h:          h,
+		cancelPing: cancel,
+		doneCh:     make(chan chan bool, 1),
+	}
 	if err := c.ping(context.Background()); err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	c.cancelPing = cancel
 	go c.loop(ctx)
-
-	c.user = newUser(c.h)
-	c.roster = newRoster(c.h)
-	c.presences = newPresences(c.h)
-	c.vCard = newVCard(c.h)
-	c.priv = newPrivate(c.h)
-	c.blockList = newBlockList(c.h)
-	c.pubSub = newPubSub(c.h)
-	c.offline = newOffline(c.h)
 
 	return c, nil
 }
 
-func (c *pgSQLContainer) User() repository.User           { return c.user }
-func (c *pgSQLContainer) Roster() repository.Roster       { return c.roster }
-func (c *pgSQLContainer) Presences() repository.Presences { return c.presences }
-func (c *pgSQLContainer) VCard() repository.VCard         { return c.vCard }
-func (c *pgSQLContainer) Private() repository.Private     { return c.priv }
-func (c *pgSQLContainer) BlockList() repository.BlockList { return c.blockList }
-func (c *pgSQLContainer) PubSub() repository.PubSub       { return c.pubSub }
-func (c *pgSQLContainer) Offline() repository.Offline     { return c.offline }
-
-func (c *pgSQLContainer) Shutdown(ctx context.Context) error {
+func (c *Storage) Shutdown(ctx context.Context) error {
 	ch := make(chan bool)
 	c.doneCh <- ch
 	select {
@@ -94,9 +86,9 @@ func (c *pgSQLContainer) Shutdown(ctx context.Context) error {
 	}
 }
 
-func (c *pgSQLContainer) IsClusterCompatible() bool { return true }
+func (c *Storage) IsClusterCompatible() bool { return true }
 
-func (c *pgSQLContainer) loop(ctx context.Context) {
+func (c *Storage) loop(ctx context.Context) {
 	tick := time.NewTicker(pingInterval)
 	defer tick.Stop()
 
@@ -121,7 +113,7 @@ func (c *pgSQLContainer) loop(ctx context.Context) {
 }
 
 // ping sends a ping request to the server and outputs any error to log
-func (c *pgSQLContainer) ping(ctx context.Context) error {
+func (c *Storage) ping(ctx context.Context) error {
 	pingCtx, cancel := context.WithDeadline(ctx, time.Now().Add(pingTimeout))
 	defer cancel()
 

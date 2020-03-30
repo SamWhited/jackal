@@ -18,19 +18,19 @@ import (
 	"github.com/ortuman/jackal/xmpp/jid"
 )
 
-type mySQLUser struct {
+type User struct {
 	*mySQLStorage
 	pool *pool.BufferPool
 }
 
-func newUser(db *sql.DB) *mySQLUser {
-	return &mySQLUser{
+func newUser(db *sql.DB) *User {
+	return &User{
 		mySQLStorage: newStorage(db),
 		pool:         pool.NewBufferPool(),
 	}
 }
 
-func (u *mySQLUser) UpsertUser(ctx context.Context, usr *model.User) error {
+func (u *User) UpsertUser(ctx context.Context, usr *model.User) error {
 	var presenceXML string
 	if usr.LastPresence != nil {
 		buf := u.pool.Get()
@@ -65,7 +65,7 @@ func (u *mySQLUser) UpsertUser(ctx context.Context, usr *model.User) error {
 	return err
 }
 
-func (u *mySQLUser) FetchUser(ctx context.Context, username string) (*model.User, error) {
+func (u *User) FetchUser(ctx context.Context, username string) (*model.User, error) {
 	q := sq.Select("username", "password", "last_presence", "last_presence_at").
 		From("users").
 		Where(sq.Eq{"username": username})
@@ -98,7 +98,7 @@ func (u *mySQLUser) FetchUser(ctx context.Context, username string) (*model.User
 	}
 }
 
-func (u *mySQLUser) DeleteUser(ctx context.Context, username string) error {
+func (u *User) DeleteUser(ctx context.Context, username string) error {
 	return u.inTransaction(ctx, func(tx *sql.Tx) error {
 		var err error
 		_, err = sq.Delete("offline_messages").Where(sq.Eq{"username": username}).RunWith(tx).ExecContext(ctx)
@@ -129,7 +129,7 @@ func (u *mySQLUser) DeleteUser(ctx context.Context, username string) error {
 	})
 }
 
-func (u *mySQLUser) UserExists(ctx context.Context, username string) (bool, error) {
+func (u *User) UserExists(ctx context.Context, username string) (bool, error) {
 	q := sq.Select("COUNT(*)").
 		From("users").
 		Where(sq.Eq{"username": username})

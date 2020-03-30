@@ -11,10 +11,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ortuman/jackal/storage"
+
 	"github.com/ortuman/jackal/log"
 	capsmodel "github.com/ortuman/jackal/model/capabilities"
 	"github.com/ortuman/jackal/router"
-	"github.com/ortuman/jackal/storage/repository"
 	"github.com/ortuman/jackal/util/runqueue"
 	"github.com/ortuman/jackal/xmpp"
 	"github.com/ortuman/jackal/xmpp/jid"
@@ -30,17 +31,17 @@ type EntityCaps struct {
 	allocationID    string
 	runQueue        *runqueue.RunQueue
 	router          router.Router
-	presencesRep    repository.Presences
+	presencesSt     storage.Presences
 	mu              sync.RWMutex
 	activeDiscoInfo map[string]bool
 }
 
 // New returns a new presence hub instance.
-func New(router router.Router, presencesRep repository.Presences, allocationID string) *EntityCaps {
+func New(router router.Router, presencesSt storage.Presences, allocationID string) *EntityCaps {
 	return &EntityCaps{
 		runQueue:        runqueue.New("xep0115"),
 		router:          router,
-		presencesRep:    presencesRep,
+		presencesSt:     presencesSt,
 		allocationID:    allocationID,
 		activeDiscoInfo: make(map[string]bool),
 	}
@@ -57,7 +58,7 @@ func (x *EntityCaps) RegisterPresence(ctx context.Context, presence *xmpp.Presen
 		}
 	}
 	// store available presence
-	inserted, err := x.presencesRep.UpsertPresence(ctx, presence, fromJID, x.allocationID)
+	inserted, err := x.presencesSt.UpsertPresence(ctx, presence, fromJID, x.allocationID)
 	if err != nil {
 		return false, err
 	}
@@ -66,7 +67,7 @@ func (x *EntityCaps) RegisterPresence(ctx context.Context, presence *xmpp.Presen
 
 // UnregisterPresence removes a presence from the hub.
 func (x *EntityCaps) UnregisterPresence(ctx context.Context, jid *jid.JID) error {
-	return x.presencesRep.DeletePresence(ctx, jid)
+	return x.presencesSt.DeletePresence(ctx, jid)
 }
 
 // MatchesIQ returns whether or not an IQ should be processed by the roster module.
@@ -94,11 +95,11 @@ func (x *EntityCaps) Shutdown() error {
 
 // PresencesMatchingJID returns current online presences matching a given JID.
 func (x *EntityCaps) PresencesMatchingJID(ctx context.Context, jid *jid.JID) ([]capsmodel.PresenceCaps, error) {
-	return x.presencesRep.FetchPresencesMatchingJID(ctx, jid)
+	return x.presencesSt.FetchPresencesMatchingJID(ctx, jid)
 }
 
 func (x *EntityCaps) registerCapabilities(ctx context.Context, node, ver string, jid *jid.JID) error {
-	caps, err := x.presencesRep.FetchCapabilities(ctx, node, ver) // try fetching from disk
+	caps, err := x.presencesSt.FetchCapabilities(ctx, node, ver) // try fetching from disk
 	if err != nil {
 		return err
 	}
@@ -164,5 +165,5 @@ func (x *EntityCaps) processCapabilitiesIQ(ctx context.Context, query xmpp.XElem
 		Ver:      ver,
 		Features: features,
 	}
-	return x.presencesRep.UpsertCapabilities(ctx, caps)
+	return x.presencesSt.UpsertCapabilities(ctx, caps)
 }

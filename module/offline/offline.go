@@ -11,7 +11,7 @@ import (
 	"github.com/ortuman/jackal/log"
 	"github.com/ortuman/jackal/module/xep0030"
 	"github.com/ortuman/jackal/router"
-	"github.com/ortuman/jackal/storage/repository"
+	"github.com/ortuman/jackal/storage"
 	"github.com/ortuman/jackal/stream"
 	"github.com/ortuman/jackal/util/runqueue"
 	"github.com/ortuman/jackal/xmpp"
@@ -25,19 +25,19 @@ const offlineDeliveredCtxKey = "offline:delivered"
 
 // Offline represents an offline server stream module.
 type Offline struct {
-	cfg        *Config
-	runQueue   *runqueue.RunQueue
-	router     router.Router
-	offlineRep repository.Offline
+	cfg       *Config
+	runQueue  *runqueue.RunQueue
+	router    router.Router
+	offlineSt storage.Offline
 }
 
 // New returns an offline server stream module.
-func New(config *Config, disco *xep0030.DiscoInfo, router router.Router, offlineRep repository.Offline) *Offline {
+func New(config *Config, disco *xep0030.DiscoInfo, router router.Router, offlineSt storage.Offline) *Offline {
 	r := &Offline{
-		cfg:        config,
-		runQueue:   runqueue.New("xep0030"),
-		router:     router,
-		offlineRep: offlineRep,
+		cfg:       config,
+		runQueue:  runqueue.New("xep0030"),
+		router:    router,
+		offlineSt: offlineSt,
 	}
 	if disco != nil {
 		disco.RegisterServerFeature(offlineNamespace)
@@ -69,7 +69,7 @@ func (x *Offline) archiveMessage(ctx context.Context, message *xmpp.Message) {
 		return
 	}
 	toJID := message.ToJID()
-	queueSize, err := x.offlineRep.CountOfflineMessages(ctx, toJID.Node())
+	queueSize, err := x.offlineSt.CountOfflineMessages(ctx, toJID.Node())
 	if err != nil {
 		log.Error(err)
 		return
@@ -80,7 +80,7 @@ func (x *Offline) archiveMessage(ctx context.Context, message *xmpp.Message) {
 	}
 	delayed, _ := xmpp.NewMessageFromElement(message, message.FromJID(), message.ToJID())
 	delayed.Delay(message.FromJID().Domain(), "Offline Storage")
-	if err := x.offlineRep.InsertOfflineMessage(ctx, delayed, toJID.Node()); err != nil {
+	if err := x.offlineSt.InsertOfflineMessage(ctx, delayed, toJID.Node()); err != nil {
 		log.Error(err)
 		_ = x.router.Route(ctx, message.InternalServerError())
 		return
@@ -101,7 +101,7 @@ func (x *Offline) deliverOfflineMessages(ctx context.Context, stm stream.C2S) {
 	}
 	// deliver offline messages
 	userJID := stm.JID()
-	messages, err := x.offlineRep.FetchOfflineMessages(ctx, userJID.Node())
+	messages, err := x.offlineSt.FetchOfflineMessages(ctx, userJID.Node())
 	if err != nil {
 		log.Error(err)
 		return
@@ -114,7 +114,7 @@ func (x *Offline) deliverOfflineMessages(ctx context.Context, stm stream.C2S) {
 	for i := 0; i < len(messages); i++ {
 		_ = x.router.Route(ctx, &messages[i])
 	}
-	if err := x.offlineRep.DeleteOfflineMessages(ctx, userJID.Node()); err != nil {
+	if err := x.offlineSt.DeleteOfflineMessages(ctx, userJID.Node()); err != nil {
 		log.Error(err)
 	}
 	stm.SetValue(offlineDeliveredCtxKey, true)

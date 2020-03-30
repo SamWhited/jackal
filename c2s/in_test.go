@@ -17,7 +17,6 @@ import (
 	"github.com/ortuman/jackal/module"
 	"github.com/ortuman/jackal/router"
 	"github.com/ortuman/jackal/storage"
-	"github.com/ortuman/jackal/storage/repository"
 	"github.com/ortuman/jackal/stream"
 	"github.com/ortuman/jackal/transport"
 	"github.com/ortuman/jackal/transport/compress"
@@ -421,7 +420,7 @@ func tUtilStreamStartSession(conn *fakeSocketConn, t *testing.T) {
 	time.Sleep(time.Millisecond * 100) // wait until stream internal state changes
 }
 
-func tUtilStreamInit(r router.Router, userRep repository.User, blockListRep repository.BlockList) (*inStream, *fakeSocketConn) {
+func tUtilStreamInit(r router.Router, userSt storage.User, blockListSt storage.BlockList) (*inStream, *fakeSocketConn) {
 	conn := newFakeSocketConn()
 	tr := transport.NewSocketTransport(conn)
 	stm := newStream(
@@ -431,8 +430,8 @@ func tUtilStreamInit(r router.Router, userRep repository.User, blockListRep repo
 		tUtilInitModules(r),
 		&component.Components{},
 		r,
-		userRep,
-		blockListRep)
+		userSt,
+		blockListSt)
 	return stm.(*inStream), conn
 }
 
