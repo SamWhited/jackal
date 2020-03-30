@@ -451,6 +451,6 @@ func tUtilInitModules(r router.Router) *module.Modules {
 	modules["roster"] = struct{}{}
 	modules["blocking_command"] = struct{}{}
 
-	repContainer, _ := storage.New(&storage.Config{Type: storage.Memory})
-	return module.New(&module.Config{Enabled: modules}, r, repContainer, "alloc-1234")
+	st, _ := storage.New(&storage.Config{Type: storage.Memory})
+	return module.New(&module.Config{Enabled: modules}, r, st, "alloc-1234")
 }
