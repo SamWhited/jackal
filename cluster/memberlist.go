@@ -87,9 +87,11 @@ func (m *memberList) loop() {
 	for {
 		select {
 		case <-tc.C:
+			log.Debugf("refreshing member list...")
+
 			ctx, cancel := context.WithTimeout(context.Background(), memberListOpTimeout)
 			if err := m.refreshMembers(ctx); err != nil {
-				log.Warnf("cluster: failed to refresh member list: %v", err)
+				log.Warnf("failed to refresh member list: %v", err)
 			}
 			cancel()
 

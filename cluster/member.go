@@ -13,6 +13,14 @@ type Member struct {
 
 type Members []Member
 
+func (m Members) AllocationIDs() []string {
+	res := make([]string, len(m))
+	for i := range m {
+		res[i] = m[i].AllocationID
+	}
+	return res
+}
+
 func (m Members) Member(allocationID string) *Member {
 	for _, m := range m {
 		if m.AllocationID == allocationID {
