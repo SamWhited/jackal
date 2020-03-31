@@ -28,11 +28,13 @@ type Storage struct {
 	isClusterCompatibleFn func() bool
 }
 
+// Shutdown
 func (s *Storage) Shutdown(ctx context.Context) error { return s.shutdownFn(ctx) }
 
+// IsClusterCompatible tells whether undelying storage is cluster compatible.
 func (s *Storage) IsClusterCompatible() bool { return s.isClusterCompatibleFn() }
 
-// New initializes configured storage type and returns associated container.
+// New initializes configured storage type.
 func New(config *Config) (*Storage, error) {
 	switch config.Type {
 	case MySQL:

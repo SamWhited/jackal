@@ -16,11 +16,15 @@ import (
 	"github.com/ortuman/jackal/log"
 )
 
+var interfaceAddrs = net.InterfaceAddrs
+
+// Cluster groups leader and memberlist cluster interfaces.
 type Cluster struct {
 	Leader
 	MemberList
 }
 
+// New returns a new cluster subsystem instance.
 func New(config *Config, allocationID string) (*Cluster, error) {
 	var candidate Leader
 	var kv KV
@@ -50,6 +54,7 @@ func New(config *Config, allocationID string) (*Cluster, error) {
 	}, nil
 }
 
+// Shutdown shuts down cluster subsystem.
 func (c *Cluster) Shutdown(ctx context.Context) error {
 	ch := make(chan error)
 	go func() {
@@ -75,7 +80,7 @@ func (c *Cluster) shutdown() error {
 }
 
 func getLocalIP() (string, error) {
-	addrs, err := net.InterfaceAddrs()
+	addrs, err := interfaceAddrs()
 	if err != nil {
 		return "", err
 	}
