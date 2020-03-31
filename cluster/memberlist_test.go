@@ -53,7 +53,7 @@ func (kv *mockedKV) GetPrefix(_ context.Context, prefix string) (map[string]stri
 	return res, nil
 }
 
-func TestMemberList_Join(t *testing.T) {
+func TestMemberList(t *testing.T) {
 	ml, kv := testMemberList()
 
 	err := ml.Join()
