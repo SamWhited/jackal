@@ -10,8 +10,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/ortuman/jackal/storage"
-
 	"github.com/google/uuid"
 	"github.com/ortuman/jackal/log"
 	pubsubmodel "github.com/ortuman/jackal/model/pubsub"
@@ -20,6 +18,7 @@ import (
 	"github.com/ortuman/jackal/module/xep0030"
 	"github.com/ortuman/jackal/module/xep0115"
 	"github.com/ortuman/jackal/router"
+	"github.com/ortuman/jackal/storage"
 	"github.com/ortuman/jackal/util/runqueue"
 	"github.com/ortuman/jackal/xmpp"
 	"github.com/ortuman/jackal/xmpp/jid"
@@ -353,7 +352,7 @@ func (x *Pep) processRequest(ctx context.Context, iq *xmpp.IQ, pubSubEl xmpp.XEl
 }
 
 func (x *Pep) processOwnerRequest(ctx context.Context, iq *xmpp.IQ, pubSub xmpp.XElement) {
-	// Configure node
+	// configure node
 	if cmdEl := pubSub.Elements().Child("configure"); cmdEl != nil {
 		if iq.IsGet() {
 			// send configuration form
@@ -379,7 +378,7 @@ func (x *Pep) processOwnerRequest(ctx context.Context, iq *xmpp.IQ, pubSub xmpp.
 		}
 		return
 	}
-	// Manage affiliations
+	// manage affiliations
 	if cmdEl := pubSub.Elements().Child("affiliations"); cmdEl != nil {
 		if iq.IsGet() {
 			opts := commandOptions{
@@ -403,7 +402,7 @@ func (x *Pep) processOwnerRequest(ctx context.Context, iq *xmpp.IQ, pubSub xmpp.
 		}
 		return
 	}
-	// Manage subscriptions
+	// manage subscriptions
 	if cmdEl := pubSub.Elements().Child("subscriptions"); cmdEl != nil {
 		if iq.IsGet() {
 			opts := commandOptions{
@@ -427,7 +426,7 @@ func (x *Pep) processOwnerRequest(ctx context.Context, iq *xmpp.IQ, pubSub xmpp.
 		}
 		return
 	}
-	// Delete node
+	// delete node
 	if cmdEl := pubSub.Elements().Child("delete"); cmdEl != nil && iq.IsSet() {
 		opts := commandOptions{
 			allowedAffiliations:  []string{pubsubmodel.Owner},
