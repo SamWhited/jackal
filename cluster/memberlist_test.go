@@ -59,7 +59,7 @@ func TestMemberList(t *testing.T) {
 	err := ml.Join()
 	require.Nil(t, err)
 
-	ms := ml.members
+	ms := ml.Members()
 	require.Len(t, ms, 1)
 
 	require.Equal(t, "10.1.0.2", ms[0].Host)
@@ -72,7 +72,7 @@ func TestMemberList(t *testing.T) {
 	err = ml.Leave()
 	require.Nil(t, err)
 
-	ms = ml.members
+	ms = ml.Members()
 	require.Len(t, ms, 0)
 }
 
