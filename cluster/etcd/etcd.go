@@ -9,12 +9,12 @@ import (
 	v3 "github.com/coreos/etcd/clientv3"
 )
 
-func New(cfg *Config) (candidate *Candidate, kv *KV, err error) {
+func New(cfg *Config) (candidate *Leader, kv *KV, err error) {
 	c, err := v3.New(v3.Config{Endpoints: cfg.Endpoints})
 	if err != nil {
 		return nil, nil, err
 	}
-	candidate, err = newCandidate(c)
+	candidate, err = newLeader(c)
 	if err != nil {
 		return nil, nil, err
 	}

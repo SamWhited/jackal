@@ -17,12 +17,12 @@ import (
 )
 
 type Cluster struct {
-	Candidate
+	Leader
 	MemberList
 }
 
 func New(config *Config, allocationID string) (*Cluster, error) {
-	var candidate Candidate
+	var candidate Leader
 	var kv KV
 	var err error
 
@@ -45,7 +45,7 @@ func New(config *Config, allocationID string) (*Cluster, error) {
 		Port:         strconv.Itoa(config.Port),
 	}
 	return &Cluster{
-		Candidate:  candidate,
+		Leader:     candidate,
 		MemberList: newMemberList(kv, localMember, config.AliveTTL),
 	}, nil
 }
@@ -67,7 +67,7 @@ func (c *Cluster) shutdown() error {
 	if err := c.MemberList.Leave(); err != nil {
 		return err
 	}
-	if err := c.Candidate.Resign(); err != nil {
+	if err := c.Leader.Resign(); err != nil {
 		return err
 	}
 	log.Infof("successfully shutted down")

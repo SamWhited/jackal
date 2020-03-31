@@ -18,15 +18,15 @@ import (
 
 const candidateOpTimeout = time.Second * 3
 
-type Candidate struct {
+type Leader struct {
 	ss       *concurrency.Session
 	election *concurrency.Election
 	isLeader int32
 	elected  int32
 }
 
-func newCandidate(cli *v3.Client) (*Candidate, error) {
-	c := &Candidate{}
+func newLeader(cli *v3.Client) (*Leader, error) {
+	c := &Leader{}
 	ss, err := concurrency.NewSession(cli)
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func newCandidate(cli *v3.Client) (*Candidate, error) {
 	return c, nil
 }
 
-func (c *Candidate) Elect() error {
+func (c *Leader) Elect() error {
 	if atomic.CompareAndSwapInt32(&c.elected, 0, 1) {
 		return nil // already electe
 	}
@@ -44,7 +44,7 @@ func (c *Candidate) Elect() error {
 	return nil
 }
 
-func (c *Candidate) Resign() error {
+func (c *Leader) Resign() error {
 	if atomic.LoadInt32(&c.elected) == 0 {
 		return nil // nothing to do here
 	}
@@ -57,11 +57,11 @@ func (c *Candidate) Resign() error {
 	return c.ss.Close()
 }
 
-func (c *Candidate) IsLeader() bool {
+func (c *Leader) IsLeader() bool {
 	return atomic.LoadInt32(&c.isLeader) == 1
 }
 
-func (c *Candidate) elect() {
+func (c *Leader) elect() {
 	val := uuid.New()
 	if err := c.election.Campaign(context.Background(), val); err != nil {
 		log.Fatalf("%v", err)
