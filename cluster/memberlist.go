@@ -23,6 +23,10 @@ const (
 	memberListPrefix = "jackal/memberlist/"
 )
 
+var (
+	defaultAliveTTL = time.Second * 3
+)
+
 type MemberList interface {
 	Join() error
 	Leave() error
@@ -33,7 +37,6 @@ type MemberList interface {
 type memberList struct {
 	kv          KV
 	localMember Member
-	aliveTTL    time.Duration
 	closeCh     chan chan bool
 	joined      int32
 	left        int32
@@ -41,11 +44,10 @@ type memberList struct {
 	members     Members
 }
 
-func newMemberList(kv KV, localMember Member, aliveTTL time.Duration) *memberList {
+func newMemberList(kv KV, localMember Member) *memberList {
 	return &memberList{
 		kv:          kv,
 		localMember: localMember,
-		aliveTTL:    aliveTTL,
 		closeCh:     make(chan chan bool),
 	}
 }
@@ -95,7 +97,7 @@ func (m *memberList) Members() Members {
 }
 
 func (m *memberList) loop() {
-	tc := time.NewTicker((m.aliveTTL * 5) / 10)
+	tc := time.NewTicker((defaultAliveTTL * 5) / 10)
 	defer tc.Stop()
 
 	for {
@@ -118,7 +120,7 @@ func (m *memberList) loop() {
 
 func (m *memberList) refreshMembers(ctx context.Context) error {
 	// refresh local member
-	if err := m.putMember(ctx, m.localMember, int64(m.aliveTTL/time.Second)); err != nil {
+	if err := m.putMember(ctx, m.localMember, int64(defaultAliveTTL/time.Second)); err != nil {
 		return err
 	}
 	// update member list

@@ -54,6 +54,8 @@ func (kv *mockedKV) GetPrefix(_ context.Context, prefix string) (map[string]stri
 }
 
 func TestMemberList(t *testing.T) {
+	defaultAliveTTL = time.Second
+
 	ml, kv := testMemberList()
 
 	err := ml.Join()
@@ -78,5 +80,5 @@ func TestMemberList(t *testing.T) {
 
 func testMemberList() (*memberList, *mockedKV) {
 	kv := newMockKV()
-	return newMemberList(kv, Member{AllocationID: "a1", Host: "10.1.0.2", Port: "2786"}, time.Second), kv
+	return newMemberList(kv, Member{AllocationID: "a1", Host: "10.1.0.2", Port: "2786"}), kv
 }

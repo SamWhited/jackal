@@ -10,11 +10,12 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strconv"
 
 	"github.com/ortuman/jackal/cluster/etcd"
 	"github.com/ortuman/jackal/log"
 )
+
+const defaultClusterPort = "14369"
 
 var interfaceAddrs = net.InterfaceAddrs
 
@@ -46,11 +47,11 @@ func New(config *Config, allocationID string) (*Cluster, error) {
 	localMember := Member{
 		AllocationID: allocationID,
 		Host:         localIP,
-		Port:         strconv.Itoa(config.Port),
+		Port:         defaultClusterPort,
 	}
 	return &Cluster{
 		Leader:     candidate,
-		MemberList: newMemberList(kv, localMember, config.AliveTTL),
+		MemberList: newMemberList(kv, localMember),
 	}, nil
 }
 

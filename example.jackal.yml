@@ -108,5 +108,3 @@ cluster:
   etcd:
     endpoints:
       - http://127.0.0.1:2379
-  port: 1234
-  alive_ttl: 3

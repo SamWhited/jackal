@@ -128,6 +128,26 @@ However there's a chance to forward offline messages to some external service by
 
 Each time a message is sent to an offline user a `POST` http request to the `pass` URL is made, using the specified `Authorization` header and including the message stanza into the request body.
 
+## Cluster configuration
+
+The purpose of clustering is to be able to use several servers for fault-tolerance and scalability.
+
+To run `jackal` in clustering mode make sure to add a `cluster` section configuration in each of the instances.
+
+Here is an example of how this section should look like:
+
+```yaml
+cluster:
+  type: etcd
+  etcd:
+    endpoints:
+      - http://127.0.0.1:2379
+```
+
+`jackal` current implementation uses `etcd` as backing store for all cluster data.
+
+To allow cluster info exchange all instances must have the ability to connect to port `14369` of all another nodes.
+
 ## Run jackal in Docker
 
 Set up `jackal` in the cloud in under 5 minutes with zero knowledge of Golang or Linux shell using our [jackal Docker image](https://hub.docker.com/r/ortuman/jackal/).
