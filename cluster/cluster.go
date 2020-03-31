@@ -19,6 +19,8 @@ const defaultClusterPort = "14369"
 
 var interfaceAddrs = net.InterfaceAddrs
 
+var initEtcd = func(config *etcd.Config) (leader Leader, kv KV, err error) { return etcd.New(config) }
+
 // Cluster groups leader and memberlist cluster interfaces.
 type Cluster struct {
 	Leader
@@ -27,13 +29,13 @@ type Cluster struct {
 
 // New returns a new cluster subsystem instance.
 func New(config *Config, allocationID string) (*Cluster, error) {
-	var candidate Leader
+	var leader Leader
 	var kv KV
 	var err error
 
 	switch config.Type {
 	case Etcd:
-		candidate, kv, err = etcd.New(config.Etcd)
+		leader, kv, err = initEtcd(config.Etcd)
 		if err != nil {
 			return nil, err
 		}
@@ -50,7 +52,7 @@ func New(config *Config, allocationID string) (*Cluster, error) {
 		Port:         defaultClusterPort,
 	}
 	return &Cluster{
-		Leader:     candidate,
+		Leader:     leader,
 		MemberList: newMemberList(kv, localMember),
 	}, nil
 }
