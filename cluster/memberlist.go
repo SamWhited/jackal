@@ -36,6 +36,7 @@ type memberList struct {
 	aliveTTL    time.Duration
 	closeCh     chan chan bool
 	joined      int32
+	left        int32
 	mu          sync.RWMutex
 	members     Members
 }
@@ -68,6 +69,19 @@ func (m *memberList) Leave() error {
 	if atomic.LoadInt32(&m.joined) == 0 {
 		return nil
 	}
+	if !atomic.CompareAndSwapInt32(&m.left, 0, 1) {
+		return nil // already left
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), memberListOpTimeout)
+	defer cancel()
+
+	if err := m.delMember(ctx, m.localMember.AllocationID); err != nil {
+		return err
+	}
+	m.mu.Lock()
+	m.members = nil
+	m.mu.Unlock()
+
 	ch := make(chan bool)
 	m.closeCh <- ch
 	<-ch
@@ -122,6 +136,11 @@ func (m *memberList) putMember(ctx context.Context, member Member, ttlInSeconds 
 	key := fmt.Sprintf("%s%s", memberListPrefix, member.AllocationID)
 	val := net.JoinHostPort(member.Host, member.Port)
 	return m.kv.Put(ctx, key, val, ttlInSeconds)
+}
+
+func (m *memberList) delMember(ctx context.Context, allocationID string) error {
+	key := fmt.Sprintf("%s%s", memberListPrefix, allocationID)
+	return m.kv.Del(ctx, key)
 }
 
 func (m *memberList) getMembers(ctx context.Context) (Members, error) {
