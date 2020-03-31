@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	defaultS2SIdentifier      = "s2s:default"
 	defaultTransportPort      = 5269
 	defaultTransportKeepAlive = time.Duration(10) * time.Minute
 	defaultDialTimeout        = time.Duration(15) * time.Second
@@ -66,7 +67,6 @@ type Config struct {
 }
 
 type configProxy struct {
-	ID             string          `yaml:"id"`
 	DialTimeout    int             `yaml:"dial_timeout"`
 	ConnectTimeout int             `yaml:"connect_timeout"`
 	KeepAlive      int             `yaml:"keep_alive"`
@@ -82,7 +82,8 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err := unmarshal(&p); err != nil {
 		return err
 	}
-	c.ID = p.ID
+	c.ID = defaultS2SIdentifier
+
 	if len(c.ID) == 0 {
 		return errors.New("s2s.Config: must specify server identifier")
 	}
