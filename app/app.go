@@ -180,7 +180,7 @@ func (a *Application) Run() error {
 	if a.cluster != nil {
 		var err error
 
-		clusterRouter, err = clusterrouter.New(a.cluster)
+		clusterRouter, err = clusterrouter.New(a.cluster, a.storage.Presences)
 		if err != nil {
 			return err
 		}

@@ -10,21 +10,25 @@ import (
 	"time"
 
 	"github.com/ortuman/jackal/cluster"
+	"github.com/ortuman/jackal/log"
 	"github.com/ortuman/jackal/router"
+	"github.com/ortuman/jackal/storage"
 	"github.com/ortuman/jackal/xmpp"
 )
 
 const houseKeepingInterval = time.Second * 3
 
 type clusterRouter struct {
-	leader     cluster.Leader
-	memberList cluster.MemberList
+	leader      cluster.Leader
+	memberList  cluster.MemberList
+	presencesSt storage.Presences
 }
 
-func New(cluster *cluster.Cluster) (router.ClusterRouter, error) {
+func New(cluster *cluster.Cluster, presencesSt storage.Presences) (router.ClusterRouter, error) {
 	r := &clusterRouter{
-		leader:     cluster,
-		memberList: cluster,
+		leader:      cluster,
+		memberList:  cluster,
+		presencesSt: presencesSt,
 	}
 	if err := r.leader.Elect(); err != nil {
 		return nil, err
@@ -45,12 +49,32 @@ func (r *clusterRouter) loop() {
 	defer tc.Stop()
 
 	for range tc.C {
-		r.houseKeeping()
+		if err := r.houseKeeping(); err != nil {
+			log.Warnf("housekeeping task error: %v", err)
+		}
 	}
 }
 
-func (r *clusterRouter) houseKeeping() {
+func (r *clusterRouter) houseKeeping() error {
 	if !r.leader.IsLeader() {
-		return
+		return nil
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), (houseKeepingInterval*5)/10)
+	defer cancel()
+
+	allocIDs, err := r.presencesSt.FetchAllocationIDs(ctx)
+	if err != nil {
+		return err
+	}
+	members := r.memberList.Members()
+	for _, allocID := range allocIDs {
+		if m := members.Member(allocID); m != nil {
+			continue
+		}
+		// clear inactive allocation presences
+		if err := r.presencesSt.DeleteAllocationPresences(ctx, allocID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
