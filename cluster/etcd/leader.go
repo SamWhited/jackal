@@ -54,6 +54,8 @@ func (c *Leader) Resign() error {
 	if err := c.election.Resign(ctx); err != nil {
 		return err
 	}
+	atomic.StoreInt32(&c.isLeader, 0)
+
 	return c.ss.Close()
 }
 
