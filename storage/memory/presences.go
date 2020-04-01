@@ -25,9 +25,9 @@ func NewPresences() *Presences {
 }
 
 // UpsertPresence inserts or updates a presence and links it to certain allocation.
-func (m *Presences) UpsertPresence(_ context.Context, presence *xmpp.Presence, jid *jid.JID, _ string) (inserted bool, err error) {
+func (m *Presences) UpsertPresence(_ context.Context, presence *xmpp.Presence, jid *jid.JID, allocationID string) (inserted bool, err error) {
 	var ok bool
-	k := presenceKey(jid)
+	k := presenceKey(jid, allocationID)
 	if err := m.inWriteLock(func() error {
 		_, ok = m.b[k]
 		b, err := serializer.Serialize(presence)
@@ -47,15 +47,17 @@ func (m *Presences) FetchPresence(_ context.Context, jid *jid.JID) (*capsmodel.P
 	var pCaps *capsmodel.PresenceCaps
 
 	if err := m.inReadLock(func() error {
-		b := m.b[presenceKey(jid)]
-		if b == nil {
+		for k, v := range m.b {
+			if !strings.HasPrefix(k, "presences:"+jid.String()) {
+				continue
+			}
+			presenceCaps, err := m.deserializePresence(v)
+			if err != nil {
+				return err
+			}
+			pCaps = presenceCaps
 			return nil
 		}
-		presenceCaps, err := m.deserializePresence(b)
-		if err != nil {
-			return err
-		}
-		pCaps = presenceCaps
 		return nil
 	}); err != nil {
 		return nil, err
@@ -86,7 +88,9 @@ func (m *Presences) FetchPresencesMatchingJID(ctx context.Context, j *jid.JID) (
 			if !strings.HasPrefix(k, "presences:") {
 				continue
 			}
-			kJID, _ := jid.NewWithString(k[10:], true)
+			ss := strings.Split(k, ":")
+
+			kJID, _ := jid.NewWithString(ss[1], true)
 			if usePrefix {
 				if !j.MatchesWithOptions(kJID, jid.MatchesBare) {
 					continue
@@ -113,11 +117,26 @@ func (m *Presences) FetchPresencesMatchingJID(ctx context.Context, j *jid.JID) (
 
 // DeletePresence removes from storage a concrete registered presence.
 func (m *Presences) DeletePresence(_ context.Context, jid *jid.JID) error {
-	return m.deleteKey(presenceKey(jid))
+	return m.inWriteLock(func() error {
+		for k := range m.b {
+			if strings.HasPrefix(k, "presences:"+jid.String()) {
+				delete(m.b, k)
+				return nil
+			}
+		}
+		return nil
+	})
 }
 
-func (m *Presences) DeleteAllocationPresences(ctx context.Context, _ string) error {
-	return m.ClearPresences(ctx)
+func (m *Presences) DeleteAllocationPresences(_ context.Context, allocationID string) error {
+	return m.inWriteLock(func() error {
+		for k := range m.b {
+			if strings.HasPrefix(k, "presences:") && strings.HasSuffix(k, ":"+allocationID) {
+				delete(m.b, k)
+			}
+		}
+		return nil
+	})
 }
 
 func (m *Presences) ClearPresences(_ context.Context) error {
@@ -130,6 +149,11 @@ func (m *Presences) ClearPresences(_ context.Context) error {
 		}
 		return nil
 	})
+}
+
+func (m *Presences) FetchAllocationIDs(_ context.Context) ([]string, error) {
+	// TODO(ortuman): implement me!
+	return nil, nil
 }
 
 func (m *Presences) UpsertCapabilities(_ context.Context, caps *capsmodel.Capabilities) error {
@@ -171,8 +195,8 @@ func (m *Presences) deserializePresence(b []byte) (*capsmodel.PresenceCaps, erro
 	return &pCaps, nil
 }
 
-func presenceKey(jid *jid.JID) string {
-	return "presences:" + jid.String()
+func presenceKey(jid *jid.JID, allocationID string) string {
+	return "presences:" + jid.String() + ":" + allocationID
 }
 
 func capabilitiesKey(node, ver string) string {

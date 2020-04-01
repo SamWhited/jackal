@@ -146,6 +146,28 @@ func (s *Presences) ClearPresences(ctx context.Context) error {
 	return err
 }
 
+func (s *Presences) FetchAllocationIDs(ctx context.Context) ([]string, error) {
+	rows, err := sq.Select("allocation_id").
+		From("presences").
+		GroupBy("allocation_id").
+		RunWith(s.db).
+		QueryContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var allocationIDs []string
+	for rows.Next() {
+		var allocationID string
+		if err := rows.Scan(&allocationID); err != nil {
+			return nil, err
+		}
+		allocationIDs = append(allocationIDs, allocationID)
+	}
+	return allocationIDs, nil
+}
+
 func (s *Presences) UpsertCapabilities(ctx context.Context, caps *capsmodel.Capabilities) error {
 	b, err := json.Marshal(caps.Features)
 	if err != nil {

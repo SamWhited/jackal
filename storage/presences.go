@@ -33,6 +33,9 @@ type Presences interface {
 	// ClearPresences wipes out all storage presences.
 	ClearPresences(ctx context.Context) error
 
+	// FetchAllocationIDs returns all allocation identifiers that registered one or more presences.
+	FetchAllocationIDs(ctx context.Context) ([]string, error)
+
 	// UpsertCapabilities inserts capabilities associated to a node+ver pair, or updates them if previously inserted..
 	UpsertCapabilities(ctx context.Context, caps *capsmodel.Capabilities) error
 

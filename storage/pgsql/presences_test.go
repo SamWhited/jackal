@@ -112,6 +112,24 @@ func TestPgSQLPresences_ClearPresences(t *testing.T) {
 	require.Nil(t, err)
 }
 
+func TestPgSQLPresences_FetchAllocationIDs(t *testing.T) {
+	var columns = []string{"allocation_ids"}
+
+	s, mock := newPresencesMock()
+	mock.ExpectQuery("SELECT allocation_id FROM presences GROUP BY allocation_id").
+		WillReturnRows(sqlmock.NewRows(columns).AddRow("a1").AddRow("a2"))
+
+	allocIDs, err := s.FetchAllocationIDs(context.Background())
+
+	require.Nil(t, mock.ExpectationsWereMet())
+
+	require.Nil(t, err)
+
+	require.Len(t, allocIDs, 2)
+	require.Equal(t, allocIDs[0], "a1")
+	require.Equal(t, allocIDs[1], "a2")
+}
+
 func TestPgSQLPresences_UpsertCapabilities(t *testing.T) {
 	features := []string{"jabber:iq:last"}
 
