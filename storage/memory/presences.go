@@ -152,8 +152,21 @@ func (m *Presences) ClearPresences(_ context.Context) error {
 }
 
 func (m *Presences) FetchAllocationIDs(_ context.Context) ([]string, error) {
-	// TODO(ortuman): implement me!
-	return nil, nil
+	allocationIDs := make(map[string]struct{})
+	if err := m.inReadLock(func() error {
+		for k := range m.b {
+			ss := strings.Split(k, ":")
+			allocationIDs[ss[2]] = struct{}{}
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	var res []string
+	for allocID := range allocationIDs {
+		res = append(res, allocID)
+	}
+	return res, nil
 }
 
 func (m *Presences) UpsertCapabilities(_ context.Context, caps *capsmodel.Capabilities) error {

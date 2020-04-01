@@ -11,7 +11,8 @@ import (
 )
 
 func TestMemoryStorage_FetchPresencesMatchingJID(t *testing.T) {
-	const allocID = "1234"
+	const allocID1 = "a1234"
+	const allocID2 = "b5678"
 
 	j1, _ := jid.NewWithString("noelia@jackal.im/garden", true)
 	j2, _ := jid.NewWithString("ortuman@jackal.im/yard", true)
@@ -24,24 +25,27 @@ func TestMemoryStorage_FetchPresencesMatchingJID(t *testing.T) {
 	p4 := xmpp.NewPresence(j1, j1.ToBareJID(), xmpp.AvailableType)
 
 	s := NewPresences()
-	ok, err := s.UpsertPresence(context.Background(), p1, j1, allocID)
+	ok, err := s.UpsertPresence(context.Background(), p1, j1, allocID1)
 	require.True(t, ok)
 	require.Nil(t, err)
 
-	ok, err = s.UpsertPresence(context.Background(), p2, j2, allocID)
+	ok, err = s.UpsertPresence(context.Background(), p2, j2, allocID2)
 	require.True(t, ok)
 	require.Nil(t, err)
 
-	ok, err = s.UpsertPresence(context.Background(), p3, j3, allocID)
+	ok, err = s.UpsertPresence(context.Background(), p3, j3, allocID1)
 	require.True(t, ok)
 	require.Nil(t, err)
 
-	ok, err = s.UpsertPresence(context.Background(), p4, j4, allocID)
+	ok, err = s.UpsertPresence(context.Background(), p4, j4, allocID2)
 	require.True(t, ok)
 	require.Nil(t, err)
+
+	allocationIDs, _ := s.FetchAllocationIDs(context.Background())
+	require.Len(t, allocationIDs, 2)
 
 	// updating presence
-	ok, err = s.UpsertPresence(context.Background(), p1, j1, allocID)
+	ok, err = s.UpsertPresence(context.Background(), p1, j1, allocID1)
 	require.False(t, ok)
 	require.Nil(t, err)
 
