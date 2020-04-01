@@ -37,7 +37,7 @@ func newLeader(cli *v3.Client) (*Leader, error) {
 }
 
 func (c *Leader) Elect() error {
-	if atomic.CompareAndSwapInt32(&c.elected, 0, 1) {
+	if !atomic.CompareAndSwapInt32(&c.elected, 0, 1) {
 		return nil // already electe
 	}
 	go c.elect()

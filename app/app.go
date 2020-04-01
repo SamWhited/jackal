@@ -178,7 +178,12 @@ func (a *Application) Run() error {
 	// initialize router
 	var clusterRouter router.ClusterRouter
 	if a.cluster != nil {
-		clusterRouter = clusterrouter.New(a.cluster)
+		var err error
+
+		clusterRouter, err = clusterrouter.New(a.cluster)
+		if err != nil {
+			return err
+		}
 	}
 	var s2sRouter router.S2SRouter
 	if cfg.S2S != nil {
