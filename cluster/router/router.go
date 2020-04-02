@@ -7,6 +7,7 @@ package clusterrouter
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ortuman/jackal/cluster"
@@ -41,6 +42,19 @@ func New(cluster *cluster.Cluster, presencesSt storage.Presences) (router.Cluste
 }
 
 func (r *clusterRouter) Route(ctx context.Context, stanza xmpp.Stanza) error {
+	allocID, err := r.presencesSt.FetchPresenceAllocationID(ctx, stanza.ToJID())
+	if err != nil {
+		return err
+	}
+	if len(allocID) == 0 {
+		return router.ErrNotAuthenticated
+	}
+	m := r.memberList.Members().Member(allocID)
+	if m == nil {
+		log.Warnf(fmt.Sprintf("allocation %s not found", allocID))
+		return nil
+	}
+	// TODO(ortuman): route cluster message
 	return nil
 }
 

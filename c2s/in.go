@@ -695,6 +695,7 @@ sendMessage:
 		s.writeElement(ctx, message.RemoteServerNotFoundError())
 	default:
 		log.Error(err)
+		s.writeElement(ctx, message.InternalServerError())
 	}
 }
 

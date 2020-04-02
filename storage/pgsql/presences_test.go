@@ -112,8 +112,26 @@ func TestPgSQLPresences_ClearPresences(t *testing.T) {
 	require.Nil(t, err)
 }
 
+func TestPgSQLPresences_FetchPresenceAllocationID(t *testing.T) {
+	var columns = []string{"allocation_id"}
+
+	j, _ := jid.NewWithString("ortuman@jackal.im/yard", true)
+
+	s, mock := newPresencesMock()
+	mock.ExpectQuery("SELECT allocation_id FROM presences WHERE \\(username = \\? AND domain = \\? AND resource = \\?\\)").
+		WithArgs(j.Node(), j.Domain(), j.Resource()).
+		WillReturnRows(sqlmock.NewRows(columns).AddRow("a1"))
+
+	allocID, err := s.FetchPresenceAllocationID(context.Background(), j)
+
+	require.Nil(t, mock.ExpectationsWereMet())
+
+	require.Nil(t, err)
+	require.Equal(t, "a1", allocID)
+}
+
 func TestPgSQLPresences_FetchAllocationIDs(t *testing.T) {
-	var columns = []string{"allocation_ids"}
+	var columns = []string{"allocation_id"}
 
 	s, mock := newPresencesMock()
 	mock.ExpectQuery("SELECT allocation_id FROM presences GROUP BY allocation_id").

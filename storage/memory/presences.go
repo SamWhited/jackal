@@ -151,7 +151,24 @@ func (m *Presences) ClearPresences(_ context.Context) error {
 	})
 }
 
-func (m *Presences) FetchAllocationIDs(_ context.Context) ([]string, error) {
+func (m *Presences) FetchPresenceAllocationID(_ context.Context, jid *jid.JID) (string, error) {
+	var allocID string
+	if err := m.inReadLock(func() error {
+		for k := range m.b {
+			if strings.HasPrefix(k, "presences:"+jid.String()) {
+				ss := strings.Split(k, ":")
+				allocID = ss[2]
+				return nil
+			}
+		}
+		return nil
+	}); err != nil {
+		return "", err
+	}
+	return allocID, nil
+}
+
+func (m *Presences) FetchPresenceAllocationIDs(_ context.Context) ([]string, error) {
 	allocationIDs := make(map[string]struct{})
 	if err := m.inReadLock(func() error {
 		for k := range m.b {

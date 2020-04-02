@@ -146,6 +146,29 @@ func (s *Presences) ClearPresences(ctx context.Context) error {
 	return err
 }
 
+func (s *Presences) FetchPresenceAllocationID(ctx context.Context, jid *jid.JID) (string, error) {
+	var allocID string
+
+	row := sq.Select("allocation_id").
+		From("presences").
+		Where(sq.And{
+			sq.Eq{"username": jid.Node()},
+			sq.Eq{"domain": jid.Domain()},
+			sq.Eq{"resource": jid.Resource()},
+		}).
+		RunWith(s.db).QueryRowContext(ctx)
+
+	err := row.Scan(&allocID)
+	switch err {
+	case nil:
+		return allocID, nil
+	case sql.ErrNoRows:
+		return "", nil
+	default:
+		return "", err
+	}
+}
+
 func (s *Presences) FetchAllocationIDs(ctx context.Context) ([]string, error) {
 	rows, err := sq.Select("allocation_id").
 		From("presences").

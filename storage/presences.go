@@ -33,6 +33,9 @@ type Presences interface {
 	// ClearPresences wipes out all storage presences.
 	ClearPresences(ctx context.Context) error
 
+	// FetchPresenceAllocationID returns the allocation identifier that registered a concrete JID presence.
+	FetchPresenceAllocationID(ctx context.Context, jid *jid.JID) (string, error)
+
 	// FetchAllocationIDs returns all allocation identifiers that registered one or more presences.
 	FetchAllocationIDs(ctx context.Context) ([]string, error)
 
