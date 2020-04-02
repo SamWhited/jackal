@@ -168,7 +168,7 @@ func (m *Presences) FetchPresenceAllocationID(_ context.Context, jid *jid.JID) (
 	return allocID, nil
 }
 
-func (m *Presences) FetchPresenceAllocationIDs(_ context.Context) ([]string, error) {
+func (m *Presences) FetchAllocationIDs(_ context.Context) ([]string, error) {
 	allocationIDs := make(map[string]struct{})
 	if err := m.inReadLock(func() error {
 		for k := range m.b {
