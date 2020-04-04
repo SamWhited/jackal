@@ -70,7 +70,10 @@ func (r *clusterRouter) Route(ctx context.Context, stanza xmpp.Stanza) error {
 		log.Warnf(fmt.Sprintf("allocation %s not found", allocID))
 		return nil
 	}
-	// TODO(ortuman): route cluster message
+	return r.route(ctx, stanza, m)
+}
+
+func (r *clusterRouter) route(ctx context.Context, stanza xmpp.Stanza, member *cluster.Member) error {
 	return nil
 }
 
