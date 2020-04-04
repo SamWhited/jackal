@@ -25,7 +25,7 @@ const (
 	routePath = "/route"
 )
 
-var clusterListerAddr = ":14369"
+var clusterListenAddr = ":14369"
 
 type StanzaHandler = func(ctx context.Context, stanza xmpp.Stanza) error
 
@@ -39,7 +39,7 @@ func newServer() *server {
 	h2s := &http2.Server{}
 	s := &server{}
 	s.srv = &http.Server{
-		Addr:    clusterListerAddr,
+		Addr:    clusterListenAddr,
 		Handler: h2c.NewHandler(s, h2s),
 	}
 	return s
