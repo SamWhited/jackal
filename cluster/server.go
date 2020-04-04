@@ -77,7 +77,6 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
 	p := xmpp.NewParser(r.Body, xmpp.DefaultMode, 0)
 	elem, err := p.ParseElement()
 	if err != nil {
