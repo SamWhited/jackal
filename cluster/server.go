@@ -25,9 +25,9 @@ const (
 	routePath = "/route"
 )
 
-var clusterListenAddr = ":14369"
-
 type StanzaHandler = func(ctx context.Context, stanza xmpp.Stanza) error
+
+var clusterListenAddr = ":14369"
 
 type server struct {
 	stanzaHnd atomic.Value
