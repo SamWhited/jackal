@@ -25,6 +25,7 @@ var initEtcd = func(config *etcd.Config) (leader Leader, kv KV, err error) { ret
 type Cluster struct {
 	Leader
 	MemberList
+	srv *server
 }
 
 // New returns a new cluster subsystem instance.
@@ -51,17 +52,21 @@ func New(config *Config, allocationID string) (*Cluster, error) {
 		Host:         localIP,
 		Port:         defaultClusterPort,
 	}
-	return &Cluster{
+	cl := &Cluster{
 		Leader:     leader,
 		MemberList: newMemberList(kv, localMember),
-	}, nil
+		srv:        newServer(),
+	}
+	go cl.serve()
+
+	return cl, nil
 }
 
 // Shutdown shuts down cluster subsystem.
 func (c *Cluster) Shutdown(ctx context.Context) error {
 	ch := make(chan error)
 	go func() {
-		ch <- c.shutdown()
+		ch <- c.shutdown(ctx)
 	}()
 	select {
 	case err := <-ch:
@@ -71,15 +76,24 @@ func (c *Cluster) Shutdown(ctx context.Context) error {
 	}
 }
 
-func (c *Cluster) shutdown() error {
+func (c *Cluster) shutdown(ctx context.Context) error {
 	if err := c.MemberList.Leave(); err != nil {
 		return err
 	}
 	if err := c.Leader.Resign(); err != nil {
 		return err
 	}
+	if err := c.srv.shutdown(ctx); err != nil {
+		return err
+	}
 	log.Infof("successfully shutted down")
 	return nil
+}
+
+func (c *Cluster) serve() {
+	if err := c.srv.start(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func getLocalIP() (string, error) {
