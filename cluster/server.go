@@ -7,7 +7,6 @@ package cluster
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"sync/atomic"
 
@@ -26,9 +25,12 @@ const (
 
 var clusterListerAddr = ":14369"
 
+type StanzaHandler = func(ctx context.Context, stanza xmpp.Stanza) error
+
 type server struct {
-	started int32
-	srv     *http.Server
+	stanzaHnd atomic.Value
+	started   int32
+	srv       *http.Server
 }
 
 func newServer() *server {
@@ -45,6 +47,10 @@ func (s *server) start() error {
 		return nil
 	}
 	return s.srv.ListenAndServe()
+}
+
+func (s *server) registerStanzaHandler(hnd StanzaHandler) {
+	s.stanzaHnd.Store(hnd)
 }
 
 func (s *server) shutdown(ctx context.Context) error {
@@ -82,5 +88,9 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	fmt.Println(stanza)
+	hnd, ok := s.stanzaHnd.Load().(StanzaHandler)
+	if ok {
+		_ = hnd(r.Context(), stanza)
+	}
+	w.WriteHeader(http.StatusOK)
 }

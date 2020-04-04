@@ -70,6 +70,7 @@ type Application struct {
 	output           io.Writer
 	args             []string
 	logger           log.Logger
+	allocID          string
 	storage          *storage.Storage
 	cluster          *cluster.Cluster
 	router           router.Router
@@ -145,13 +146,13 @@ func (a *Application) Run() error {
 	}
 
 	// set allocation identifier
-	allocID := os.Getenv(envAllocationID)
-	if len(allocID) == 0 {
-		allocID = uuid.New().String()
+	a.allocID = os.Getenv(envAllocationID)
+	if len(a.allocID) == 0 {
+		a.allocID = uuid.New().String()
 	}
 
 	// show jackal's fancy logo
-	a.printLogo(allocID)
+	a.printLogo()
 
 	// initialize storage
 	a.storage, err = storage.New(&cfg.Storage)
@@ -160,7 +161,7 @@ func (a *Application) Run() error {
 	}
 	// initialize cluster
 	if cfg.Cluster != nil {
-		a.cluster, err = cluster.New(cfg.Cluster, allocID)
+		a.cluster, err = cluster.New(cfg.Cluster, a.allocID)
 		if err != nil {
 			return err
 		}
@@ -199,9 +200,12 @@ func (a *Application) Run() error {
 	if err != nil {
 		return err
 	}
+	if a.cluster != nil {
+		a.cluster.RegisterStanzaHandler(a.router.Route)
+	}
 
 	// initialize modules & components...
-	a.mods = module.New(&cfg.Modules, a.router, a.storage, allocID)
+	a.mods = module.New(&cfg.Modules, a.router, a.storage, a.allocID)
 	a.comps = component.New(&cfg.Components, a.mods.DiscoInfo)
 
 	// start serving s2s...
@@ -279,12 +283,12 @@ func (a *Application) initLogger(config *loggerConfig, output io.Writer) error {
 	return nil
 }
 
-func (a *Application) printLogo(allocID string) {
+func (a *Application) printLogo() {
 	for i := range logoStr {
 		log.Infof("%s", logoStr[i])
 	}
 	log.Infof("")
-	log.Infof("jackal %v - allocation_id: %s\n", version.ApplicationVersion, allocID)
+	log.Infof("jackal %v - allocation_id: %s\n", version.ApplicationVersion, a.allocID)
 }
 
 func (a *Application) setRLimit() error {
@@ -373,6 +377,9 @@ func (a *Application) doShutdown(ctx context.Context) error {
 		return err
 	}
 	if a.cluster != nil {
+		if err := a.storage.DeleteAllocationPresences(ctx, a.allocID); err != nil {
+			return err
+		}
 		if err := a.cluster.Shutdown(ctx); err != nil {
 			return err
 		}

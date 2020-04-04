@@ -62,6 +62,11 @@ func New(config *Config, allocationID string) (*Cluster, error) {
 	return cl, nil
 }
 
+// RegisterStanzaHandler registers cluster stanza handler callback.
+func (c *Cluster) RegisterStanzaHandler(hnd StanzaHandler) {
+	c.srv.registerStanzaHandler(hnd)
+}
+
 // Shutdown shuts down cluster subsystem.
 func (c *Cluster) Shutdown(ctx context.Context) error {
 	ch := make(chan error)
