@@ -7,11 +7,14 @@ package cluster
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync/atomic"
 
 	"github.com/ortuman/jackal/log"
 	"github.com/ortuman/jackal/xmpp"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 const (
@@ -34,10 +37,11 @@ type server struct {
 }
 
 func newServer() *server {
+	h2s := &http2.Server{}
 	s := &server{}
 	s.srv = &http.Server{
 		Addr:    clusterListerAddr,
-		Handler: s,
+		Handler: h2c.NewHandler(s, h2s),
 	}
 	return s
 }
@@ -88,9 +92,10 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	hnd, ok := s.stanzaHnd.Load().(StanzaHandler)
-	if ok {
-		_ = hnd(r.Context(), stanza)
-	}
+	// hnd, ok := s.stanzaHnd.Load().(StanzaHandler)
+	// if ok {
+	// _ = hnd(r.Context(), stanza)
+	fmt.Println(stanza)
+	// }
 	w.WriteHeader(http.StatusOK)
 }

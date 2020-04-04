@@ -36,7 +36,9 @@ func newHTTPGateway(url string, authToken string) gateway {
 }
 
 func (g *httpGateway) Route(msg *xmpp.Message) error {
-	msg.ToXML(g.reqBuf, true)
+	if err := msg.ToXML(g.reqBuf, true); err != nil {
+		return err
+	}
 	defer g.reqBuf.Reset()
 
 	req, err := http.NewRequest(http.MethodPost, g.url, g.reqBuf)
