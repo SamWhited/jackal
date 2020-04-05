@@ -24,7 +24,7 @@ func TestServer_MethodNotSupported(t *testing.T) {
 		t.Fatal(err)
 	}
 	rr := httptest.NewRecorder()
-	srv := newServer()
+	srv := newServer(defaultClusterPort)
 
 	srv.ServeHTTP(rr, req)
 
@@ -37,7 +37,7 @@ func TestServer_BadRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 	rr := httptest.NewRecorder()
-	srv := newServer()
+	srv := newServer(defaultClusterPort)
 
 	srv.ServeHTTP(rr, req)
 
@@ -50,7 +50,7 @@ func TestServer_NotFound(t *testing.T) {
 		t.Fatal(err)
 	}
 	rr := httptest.NewRecorder()
-	srv := newServer()
+	srv := newServer(defaultClusterPort)
 
 	srv.ServeHTTP(rr, req)
 
@@ -71,7 +71,7 @@ func TestServer_Ok(t *testing.T) {
 	req.Header.Set("Content-Type", xmlAppMimeType)
 
 	rr := httptest.NewRecorder()
-	srv := newServer()
+	srv := newServer(defaultClusterPort)
 
 	ch := make(chan xmpp.Stanza, 1)
 	srv.registerStanzaHandler(func(_ context.Context, stanza xmpp.Stanza) error {
