@@ -34,6 +34,7 @@ type clusterRouter struct {
 	pool        *pool.BufferPool
 }
 
+// New returns a new cluster router instance.
 func New(cluster *cluster.Cluster, presencesSt storage.Presences) (router.ClusterRouter, error) {
 	h2cTransport := &http2.Transport{
 		AllowHTTP: true,
