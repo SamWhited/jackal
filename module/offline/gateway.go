@@ -2,8 +2,12 @@ package offline
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
+
+	"golang.org/x/net/http2"
 
 	"github.com/ortuman/jackal/xmpp"
 	"github.com/sony/gobreaker"
@@ -26,12 +30,18 @@ type httpGateway struct {
 }
 
 func newHTTPGateway(url string, authToken string) gateway {
+	h2cTransport := &http2.Transport{
+		AllowHTTP: true,
+		DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
+			return net.Dial(network, addr)
+		},
+	}
 	return &httpGateway{
 		url:       url,
 		authToken: authToken,
 		reqBuf:    bytes.NewBuffer(nil),
 		cb:        gobreaker.NewCircuitBreaker(gobreaker.Settings{}),
-		client:    &http.Client{},
+		client:    &http.Client{Transport: h2cTransport},
 	}
 }
 
