@@ -44,6 +44,19 @@ func TestServer_BadRequest(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, rr.Code)
 }
 
+func TestServer_NotFound(t *testing.T) {
+	req, err := http.NewRequest(http.MethodPost, "/unknown_path", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rr := httptest.NewRecorder()
+	srv := newServer()
+
+	srv.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusNotFound, rr.Code)
+}
+
 func TestServer_Ok(t *testing.T) {
 	j, _ := jid.NewWithString("ortuman@jackal.im/yard", true)
 	p := xmpp.NewPresence(j, j.ToBareJID(), xmpp.AvailableType)
