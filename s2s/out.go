@@ -152,7 +152,7 @@ func (s *outStream) dial(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	s.tr = transport.NewSocketTransport(conn)
+	s.tr = transport.NewSocketTransport(conn, s.cfg.keepAlive)
 	return nil
 }
 

@@ -422,7 +422,7 @@ func tUtilStreamStartSession(conn *fakeSocketConn, t *testing.T) {
 
 func tUtilStreamInit(r router.Router, userSt storage.User, blockListSt storage.BlockList) (*inStream, *fakeSocketConn) {
 	conn := newFakeSocketConn()
-	tr := transport.NewSocketTransport(conn)
+	tr := transport.NewSocketTransport(conn, time.Second)
 	stm := newStream(
 		"abcd1234",
 		tUtilInStreamDefaultConfig(),

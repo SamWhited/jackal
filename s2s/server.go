@@ -82,7 +82,7 @@ func (s *server) listenConn(address string) error {
 	for atomic.LoadUint32(&s.listening) == 1 {
 		conn, err := ln.Accept()
 		if err == nil {
-			go s.startInStream(transport.NewSocketTransport(conn))
+			go s.startInStream(transport.NewSocketTransport(conn, s.cfg.KeepAlive))
 			continue
 		}
 	}

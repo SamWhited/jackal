@@ -52,7 +52,7 @@ func (a fakeAddr) String() string  { return "str" }
 func TestSocket(t *testing.T) {
 	buff := make([]byte, 4096)
 	conn := newFakeSocketConn()
-	st := NewSocketTransport(conn)
+	st := NewSocketTransport(conn, time.Second)
 	st2 := st.(*socketTransport)
 
 	el1 := xmpp.NewElementNamespace("elem", "exodus:ns")

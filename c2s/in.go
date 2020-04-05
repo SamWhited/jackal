@@ -50,7 +50,6 @@ type inStream struct {
 	mu             sync.RWMutex
 	id             string
 	connectTm      *time.Timer
-	readTimeoutTm  *time.Timer
 	state          uint32
 	authenticators []auth.Authenticator
 	activeAuth     auth.Authenticator
@@ -701,9 +700,7 @@ sendMessage:
 
 // Runs on it's own goroutine
 func (s *inStream) doRead() {
-	s.scheduleReadTimeout()
 	elem, sErr := s.sess.Receive()
-	s.cancelReadTimeout()
 
 	ctx, _ := context.WithTimeout(context.Background(), s.cfg.timeout)
 	if sErr == nil {
@@ -889,25 +886,6 @@ func (s *inStream) setSessionStarted(sessStarted bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.sessStarted = sessStarted
-}
-
-func (s *inStream) scheduleReadTimeout() {
-	s.mu.Lock()
-	s.readTimeoutTm = time.AfterFunc(s.cfg.keepAlive, s.readTimeout)
-	s.mu.Unlock()
-}
-
-func (s *inStream) cancelReadTimeout() {
-	s.mu.Lock()
-	s.readTimeoutTm.Stop()
-	s.mu.Unlock()
-}
-
-func (s *inStream) readTimeout() {
-	s.runQueue.Run(func() {
-		ctx, _ := context.WithTimeout(context.Background(), s.cfg.timeout)
-		s.disconnect(ctx, streamerror.ErrConnectionTimeout)
-	})
 }
 
 func (s *inStream) setState(state uint32) {

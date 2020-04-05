@@ -395,7 +395,7 @@ func tUtilInStreamDefaultConfig(t *testing.T, loadPeerCertificate bool) (*inConf
 	}
 
 	conn := newFakeSocketConnWithPeerCerts(peerCerts)
-	tr := transport.NewSocketTransport(conn)
+	tr := transport.NewSocketTransport(conn, time.Second)
 	return &inConfig{
 		connectTimeout: time.Second,
 		keepAlive:      time.Second,

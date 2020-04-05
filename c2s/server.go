@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/ortuman/jackal/storage"
 
@@ -81,7 +80,7 @@ func (s *server) listenSocketConn(address string) error {
 	for atomic.LoadUint32(&s.listening) == 1 {
 		conn, err := ln.Accept()
 		if err == nil {
-			go s.startStream(transport.NewSocketTransport(conn), s.cfg.KeepAlive)
+			go s.startStream(transport.NewSocketTransport(conn, s.cfg.Transport.KeepAlive))
 			continue
 		}
 	}
@@ -107,11 +106,10 @@ func (s *server) shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (s *server) startStream(tr transport.Transport, keepAlive time.Duration) {
+func (s *server) startStream(tr transport.Transport) {
 	cfg := &streamConfig{
 		resourceConflict: s.cfg.ResourceConflict,
 		connectTimeout:   s.cfg.ConnectTimeout,
-		keepAlive:        s.cfg.KeepAlive,
 		timeout:          s.cfg.Timeout,
 		maxStanzaSize:    s.cfg.MaxStanzaSize,
 		sasl:             s.cfg.SASL,

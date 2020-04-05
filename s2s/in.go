@@ -41,7 +41,6 @@ type inStream struct {
 	tr            transport.Transport
 	mu            sync.RWMutex
 	connectTm     *time.Timer
-	readTimeoutTm *time.Timer
 	sess          *session.Session
 	secured       uint32
 	authenticated uint32
@@ -95,9 +94,7 @@ func (s *inStream) connectTimeout() {
 
 // runs on its own goroutine
 func (s *inStream) doRead() {
-	s.scheduleReadTimeout()
 	elem, sErr := s.sess.Receive()
-	s.cancelReadTimeout()
 
 	ctx, _ := context.WithTimeout(context.Background(), s.cfg.timeout)
 	if sErr == nil {
@@ -468,25 +465,6 @@ func (s *inStream) restartSession() {
 		IsServer:      true,
 	}, s.tr, s.router.Hosts())
 	s.setState(inConnecting)
-}
-
-func (s *inStream) scheduleReadTimeout() {
-	s.mu.Lock()
-	s.readTimeoutTm = time.AfterFunc(s.cfg.keepAlive, s.readTimeout)
-	s.mu.Unlock()
-}
-
-func (s *inStream) cancelReadTimeout() {
-	s.mu.Lock()
-	s.readTimeoutTm.Stop()
-	s.mu.Unlock()
-}
-
-func (s *inStream) readTimeout() {
-	s.runQueue.Run(func() {
-		ctx, _ := context.WithTimeout(context.Background(), s.cfg.timeout)
-		s.disconnect(ctx, streamerror.ErrConnectionTimeout)
-	})
 }
 
 func (s *inStream) isSecured() bool {
