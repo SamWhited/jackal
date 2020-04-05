@@ -13,12 +13,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ortuman/jackal/util/pool"
-
 	"github.com/ortuman/jackal/cluster"
 	"github.com/ortuman/jackal/log"
 	"github.com/ortuman/jackal/router"
 	"github.com/ortuman/jackal/storage"
+	"github.com/ortuman/jackal/util/pool"
 	"github.com/ortuman/jackal/xmpp"
 	"github.com/sony/gobreaker"
 	"golang.org/x/net/http2"
