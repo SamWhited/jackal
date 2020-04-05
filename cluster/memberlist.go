@@ -9,6 +9,8 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"reflect"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -125,6 +127,14 @@ func (m *memberList) refreshMembers(ctx context.Context) error {
 	members, err := m.getMembers(ctx)
 	if err != nil {
 		return err
+	}
+	sort.Slice(members, func(i, j int) bool { return members[i].Host < members[j].Host })
+
+	m.mu.RLock()
+	equal := reflect.DeepEqual(members, m.members)
+	m.mu.RUnlock()
+	if equal {
+		return nil
 	}
 	m.mu.Lock()
 	m.members = members
