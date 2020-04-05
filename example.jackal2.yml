@@ -2,9 +2,6 @@
 
 pid_path: jackal.pid
 
-# debug:
-#  port: 6060
-
 logger:
   level: debug
   log_path: jackal.log
@@ -79,7 +76,7 @@ c2s:
     transport:
       type: socket # websocket
       bind_addr: 0.0.0.0
-      port: 5222
+      port: 5224
       # url_path: /xmpp/ws
 
     compression:
@@ -107,3 +104,4 @@ cluster:
   etcd:
     endpoints:
       - http://127.0.0.1:2379
+  port: 14370

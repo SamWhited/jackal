@@ -30,11 +30,13 @@ func (t Type) String() string { return typeStringMap[t] }
 type Config struct {
 	Type Type
 	Etcd *etcd.Config
+	Port int
 }
 
 type clusterProxyType struct {
 	Type string       `yaml:"type"`
 	Etcd *etcd.Config `yaml:"etcd"`
+	Port int          `yaml:"port"`
 }
 
 // UnmarshalYAML satisfies Unmarshaler interface.
@@ -51,6 +53,11 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		}
 		c.Type = Etcd
 		c.Etcd = p.Etcd
+
+		c.Port = p.Port
+		if c.Port == 0 {
+			c.Port = defaultClusterPort
+		}
 
 	case "":
 		return errors.New("cluster.Config: unspecified storage type")
