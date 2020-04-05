@@ -51,14 +51,14 @@ func New(config *Config, allocationID string) (*Cluster, error) {
 	localMember := Member{
 		AllocationID: allocationID,
 		Host:         localIP,
-		Port:         strconv.Itoa(defaultClusterPort),
+		Port:         strconv.Itoa(config.Port),
 	}
 	cl := &Cluster{
 		Leader:     leader,
 		MemberList: newMemberList(kv, localMember),
-		srv:        newServer(),
+		srv:        newServer(config.Port),
 	}
-	log.Infof("listening at :%s", localMember.Port)
+	log.Infof("listening at :%d", config.Port)
 
 	go cl.serve()
 

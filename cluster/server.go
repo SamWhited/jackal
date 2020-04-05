@@ -8,6 +8,7 @@ package cluster
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"sync/atomic"
 
 	"github.com/ortuman/jackal/log"
@@ -27,19 +28,17 @@ const (
 
 type StanzaHandler = func(ctx context.Context, stanza xmpp.Stanza) error
 
-var clusterListenAddr = ":14369"
-
 type server struct {
 	stanzaHnd atomic.Value
 	started   int32
 	srv       *http.Server
 }
 
-func newServer() *server {
+func newServer(port int) *server {
 	h2s := &http2.Server{}
 	s := &server{}
 	s.srv = &http.Server{
-		Addr:    clusterListenAddr,
+		Addr:    ":" + strconv.Itoa(port),
 		Handler: h2c.NewHandler(s, h2s),
 	}
 	return s
