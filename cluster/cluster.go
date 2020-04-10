@@ -26,7 +26,9 @@ var initEtcd = func(config *etcd.Config) (leader Leader, kv KV, err error) { ret
 type Cluster struct {
 	Leader
 	MemberList
-	srv *server
+
+	allocationID string
+	srv          *server
 }
 
 // New returns a new cluster subsystem instance.
@@ -54,9 +56,10 @@ func New(config *Config, allocationID string) (*Cluster, error) {
 		Port:         strconv.Itoa(config.Port),
 	}
 	cl := &Cluster{
-		Leader:     leader,
-		MemberList: newMemberList(kv, localMember),
-		srv:        newServer(config.Port),
+		Leader:       leader,
+		MemberList:   newMemberList(kv, localMember),
+		allocationID: allocationID,
+		srv:          newServer(config.Port),
 	}
 	log.Infof("listening at :%d", config.Port)
 
@@ -68,6 +71,11 @@ func New(config *Config, allocationID string) (*Cluster, error) {
 // RegisterStanzaHandler registers cluster stanza handler callback.
 func (c *Cluster) RegisterStanzaHandler(hnd StanzaHandler) {
 	c.srv.registerStanzaHandler(hnd)
+}
+
+// IsLocalAllocationID tells whether or not allocID refers to local allocation identifier.
+func (c *Cluster) IsLocalAllocationID(allocID string) bool {
+	return c.allocationID == allocID
 }
 
 // Shutdown shuts down cluster subsystem.

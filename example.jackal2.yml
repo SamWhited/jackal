@@ -75,7 +75,7 @@ c2s:
     transport:
       type: socket
       bind_addr: 0.0.0.0
-      port: 5222
+      port: 5224
       keep_alive: 120
 
     compression:

@@ -3,7 +3,7 @@
  * See the LICENSE file for more information.
  */
 
-package clusterrouter
+package c2srouter
 
 import (
 	"context"
@@ -15,7 +15,6 @@ import (
 
 	"github.com/ortuman/jackal/cluster"
 	"github.com/ortuman/jackal/log"
-	"github.com/ortuman/jackal/router"
 	"github.com/ortuman/jackal/storage"
 	"github.com/ortuman/jackal/util/pool"
 	"github.com/ortuman/jackal/xmpp"
@@ -26,16 +25,16 @@ import (
 const houseKeepingInterval = time.Second * 3
 
 type clusterRouter struct {
-	leader      cluster.Leader
-	memberList  cluster.MemberList
-	presencesSt storage.Presences
 	hClient     *http.Client
 	cb          *gobreaker.CircuitBreaker
 	pool        *pool.BufferPool
+	leader      cluster.Leader
+	memberList  cluster.MemberList
+	presencesSt storage.Presences
+	closeCh     chan chan struct{}
 }
 
-// New returns a new cluster router instance.
-func New(cluster *cluster.Cluster, presencesSt storage.Presences) (router.ClusterRouter, error) {
+func newClusterRouter(cluster *cluster.Cluster, presencesSt storage.Presences) (*clusterRouter, error) {
 	h2cTransport := &http2.Transport{
 		AllowHTTP: true,
 		DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
@@ -43,12 +42,13 @@ func New(cluster *cluster.Cluster, presencesSt storage.Presences) (router.Cluste
 		},
 	}
 	r := &clusterRouter{
-		leader:      cluster,
-		memberList:  cluster,
-		presencesSt: presencesSt,
 		hClient:     &http.Client{Transport: h2cTransport},
 		cb:          gobreaker.NewCircuitBreaker(gobreaker.Settings{}),
 		pool:        pool.NewBufferPool(),
+		leader:      cluster.Leader,
+		memberList:  cluster.MemberList,
+		presencesSt: presencesSt,
+		closeCh:     make(chan chan struct{}, 1),
 	}
 	if err := r.leader.Elect(); err != nil {
 		return nil, err
@@ -57,26 +57,16 @@ func New(cluster *cluster.Cluster, presencesSt storage.Presences) (router.Cluste
 		return nil, err
 	}
 	go r.loop()
+
 	return r, nil
 }
 
-func (r *clusterRouter) Route(ctx context.Context, stanza xmpp.Stanza) error {
-	allocID, err := r.presencesSt.FetchPresenceAllocationID(ctx, stanza.ToJID())
-	if err != nil {
-		return err
-	}
-	if len(allocID) == 0 {
-		return router.ErrNotAuthenticated
-	}
-	m := r.memberList.Members().Member(allocID)
-	if m == nil {
-		log.Warnf(fmt.Sprintf("allocation %s not found", allocID))
+func (r *clusterRouter) route(ctx context.Context, stanza xmpp.Stanza, allocationID string) error {
+	member := r.memberList.Members().Member(allocationID)
+	if member == nil {
+		log.Warnf(fmt.Sprintf("allocation %s not found", allocationID))
 		return nil
 	}
-	return r.route(ctx, stanza, m)
-}
-
-func (r *clusterRouter) route(ctx context.Context, stanza xmpp.Stanza, member *cluster.Member) error {
 	buf := r.pool.Get()
 	defer r.pool.Put(buf)
 
@@ -106,13 +96,30 @@ func (r *clusterRouter) route(ctx context.Context, stanza xmpp.Stanza, member *c
 	return err
 }
 
+func (r *clusterRouter) shutdown(ctx context.Context) error {
+	ch := make(chan struct{})
+	r.closeCh <- ch
+	select {
+	case <-ch:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 func (r *clusterRouter) loop() {
 	tc := time.NewTicker(houseKeepingInterval)
 	defer tc.Stop()
 
-	for range tc.C {
-		if err := r.houseKeeping(); err != nil {
-			log.Warnf("housekeeping task error: %v", err)
+	for {
+		select {
+		case <-tc.C:
+			if err := r.houseKeeping(); err != nil {
+				log.Warnf("housekeeping task error: %v", err)
+			}
+		case ch := <-r.closeCh:
+			close(ch)
+			return
 		}
 	}
 }

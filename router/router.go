@@ -14,6 +14,17 @@ import (
 	"github.com/ortuman/jackal/xmpp/jid"
 )
 
+// C2SRoutingValidations represents C2S routing validations mask.
+type C2SRoutingValidations int8
+
+const (
+	// UserExistence tells the C2S wether to check if the destination user exists.
+	UserExistence = C2SRoutingValidations(1 << 1)
+
+	// BlockedDestinationJID tells the C2S router should check whether the destination is blocked or not.
+	BlockedDestinationJID = C2SRoutingValidations(1 << 2)
+)
+
 type Router interface {
 
 	// Hosts returns router hosts container.
@@ -42,7 +53,7 @@ type Router interface {
 type C2SRouter interface {
 	// Route routes a stanza applying server rules for handling XML stanzas.
 	// (https://xmpp.org/rfcs/rfc3921.html#rules)
-	Route(ctx context.Context, stanza xmpp.Stanza, validateStanza bool) error
+	Route(ctx context.Context, stanza xmpp.Stanza, validations C2SRoutingValidations) error
 
 	// Bind sets a c2s stream as bound.
 	Bind(stm stream.C2S)
@@ -63,25 +74,17 @@ type S2SRouter interface {
 	Route(ctx context.Context, stanza xmpp.Stanza, localDomain string) error
 }
 
-type ClusterRouter interface {
-	// Route routes a stanza applying server rules for handling XML stanzas.
-	// (https://xmpp.org/rfcs/rfc3921.html#rules)
-	Route(ctx context.Context, stanza xmpp.Stanza) error
-}
-
 type router struct {
-	hosts         *host.Hosts
-	c2s           C2SRouter
-	s2s           S2SRouter
-	clusterRouter ClusterRouter
+	hosts *host.Hosts
+	c2s   C2SRouter
+	s2s   S2SRouter
 }
 
-func New(hosts *host.Hosts, c2sRouter C2SRouter, s2sRouter S2SRouter, clusterRouter ClusterRouter) (Router, error) {
+func New(hosts *host.Hosts, c2sRouter C2SRouter, s2sRouter S2SRouter) (Router, error) {
 	r := &router{
-		hosts:         hosts,
-		c2s:           c2sRouter,
-		s2s:           s2sRouter,
-		clusterRouter: clusterRouter,
+		hosts: hosts,
+		c2s:   c2sRouter,
+		s2s:   s2sRouter,
 	}
 	return r, nil
 }
@@ -91,11 +94,11 @@ func (r *router) Hosts() *host.Hosts {
 }
 
 func (r *router) MustRoute(ctx context.Context, stanza xmpp.Stanza) error {
-	return r.route(ctx, stanza, false)
+	return r.route(ctx, stanza, UserExistence)
 }
 
 func (r *router) Route(ctx context.Context, stanza xmpp.Stanza) error {
-	return r.route(ctx, stanza, true)
+	return r.route(ctx, stanza, UserExistence|BlockedDestinationJID)
 }
 
 func (r *router) Bind(ctx context.Context, stm stream.C2S) {
@@ -114,7 +117,7 @@ func (r *router) LocalStream(username, resource string) stream.C2S {
 	return r.c2s.Stream(username, resource)
 }
 
-func (r *router) route(ctx context.Context, stanza xmpp.Stanza, validateStanza bool) error {
+func (r *router) route(ctx context.Context, stanza xmpp.Stanza, localValidations C2SRoutingValidations) error {
 	toJID := stanza.ToJID()
 	if !r.hosts.IsLocalHost(toJID.Domain()) {
 		if r.s2s == nil {
@@ -122,9 +125,5 @@ func (r *router) route(ctx context.Context, stanza xmpp.Stanza, validateStanza b
 		}
 		return r.s2s.Route(ctx, stanza, r.hosts.DefaultHostName())
 	}
-	err := r.c2s.Route(ctx, stanza, validateStanza)
-	if r.clusterRouter != nil && err == ErrNotAuthenticated {
-		return r.clusterRouter.Route(ctx, stanza)
-	}
-	return err
+	return r.c2s.Route(ctx, stanza, localValidations)
 }

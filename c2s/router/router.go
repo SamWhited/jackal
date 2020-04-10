@@ -9,6 +9,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ortuman/jackal/cluster"
 	"github.com/ortuman/jackal/log"
 	"github.com/ortuman/jackal/router"
 	"github.com/ortuman/jackal/storage"
@@ -18,44 +19,54 @@ import (
 )
 
 type c2sRouter struct {
-	mu          sync.RWMutex
-	tbl         map[string]*resources
-	userSt      storage.User
-	blockListSt storage.BlockList
+	mu            sync.RWMutex
+	tbl           map[string]*resources
+	userSt        storage.User
+	blockListSt   storage.BlockList
+	presencesSt   storage.Presences
+	cluster       *cluster.Cluster
+	clusterRouter *clusterRouter
 }
 
-func New(userSt storage.User, blockListSt storage.BlockList) router.C2SRouter {
-	return &c2sRouter{
+func New(userSt storage.User, blockListSt storage.BlockList, presencesSt storage.Presences, cluster *cluster.Cluster) (router.C2SRouter, error) {
+	r := &c2sRouter{
 		tbl:         make(map[string]*resources),
 		userSt:      userSt,
 		blockListSt: blockListSt,
+		presencesSt: presencesSt,
 	}
+	if cluster != nil {
+		clusterRouter, err := newClusterRouter(cluster, presencesSt)
+		if err != nil {
+			return nil, err
+		}
+		r.cluster = cluster
+		r.clusterRouter = clusterRouter
+	}
+	return r, nil
 }
 
-func (r *c2sRouter) Route(ctx context.Context, stanza xmpp.Stanza, validateStanza bool) error {
+func (r *c2sRouter) Route(ctx context.Context, stanza xmpp.Stanza, validations router.C2SRoutingValidations) error {
 	fromJID := stanza.FromJID()
 	toJID := stanza.ToJID()
 
-	// validate if sender JID is blocked
-	if validateStanza && r.isBlockedJID(ctx, toJID, fromJID.Node()) {
-		return router.ErrBlockedJID
-	}
+	// apply validations
 	username := stanza.ToJID().Node()
-	r.mu.RLock()
-	rs := r.tbl[username]
-	r.mu.RUnlock()
-
-	if rs == nil {
-		exists, err := r.userSt.UserExists(ctx, username)
+	if (validations & router.UserExistence) > 0 {
+		exists, err := r.userSt.UserExists(ctx, username) // user exists?
 		if err != nil {
 			return err
 		}
-		if exists {
-			return router.ErrNotAuthenticated
+		if !exists {
+			return router.ErrNotExistingAccount
 		}
-		return router.ErrNotExistingAccount
 	}
-	return rs.route(ctx, stanza)
+	if (validations & router.BlockedDestinationJID) > 0 {
+		if r.isBlockedJID(ctx, toJID, fromJID.Node()) { // check whether destination JID is blocked
+			return router.ErrBlockedJID
+		}
+	}
+	return r.route(ctx, stanza)
 }
 
 func (r *c2sRouter) Bind(stm stream.C2S) {
@@ -116,6 +127,48 @@ func (r *c2sRouter) Streams(username string) []stream.C2S {
 		return nil
 	}
 	return rs.allStreams()
+}
+
+func (r *c2sRouter) route(ctx context.Context, stanza xmpp.Stanza) error {
+	toJID := stanza.ToJID()
+	if toJID.IsFullWithUser() {
+		return r.routeToResource(ctx, stanza)
+	}
+	switch stanza.(type) {
+	case *xmpp.Message:
+		routed, err := r.routeToPrioritaryResource(ctx, stanza)
+		if err != nil {
+			return err
+		}
+		if !routed {
+			goto route2all
+		}
+		return nil
+	}
+route2all:
+	return r.routeToAllResources(ctx, stanza)
+}
+
+func (r *c2sRouter) routeToResource(ctx context.Context, stanza xmpp.Stanza) error {
+	allocID, err := r.presencesSt.FetchPresenceAllocationID(ctx, stanza.ToJID())
+	if err != nil {
+		return err
+	}
+	if len(allocID) == 0 {
+		return router.ErrResourceNotFound
+	}
+	if r.clusterRouter == nil || r.cluster.IsLocalAllocationID(allocID) {
+
+	}
+	return r.clusterRouter.route(ctx, stanza, allocID)
+}
+
+func (r *c2sRouter) routeToPrioritaryResource(ctx context.Context, stanza xmpp.Stanza) (routed bool, err error) {
+	return false, nil
+}
+
+func (r *c2sRouter) routeToAllResources(ctx context.Context, stanza xmpp.Stanza) error {
+	return nil
 }
 
 func (r *c2sRouter) isBlockedJID(ctx context.Context, j *jid.JID, username string) bool {

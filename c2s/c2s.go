@@ -10,11 +10,10 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/ortuman/jackal/storage"
-
 	"github.com/ortuman/jackal/component"
 	"github.com/ortuman/jackal/module"
 	"github.com/ortuman/jackal/router"
+	"github.com/ortuman/jackal/storage"
 	"github.com/pkg/errors"
 )
 

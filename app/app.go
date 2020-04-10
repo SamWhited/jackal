@@ -25,7 +25,6 @@ import (
 	"github.com/ortuman/jackal/c2s"
 	c2srouter "github.com/ortuman/jackal/c2s/router"
 	"github.com/ortuman/jackal/cluster"
-	clusterrouter "github.com/ortuman/jackal/cluster/router"
 	"github.com/ortuman/jackal/component"
 	"github.com/ortuman/jackal/log"
 	"github.com/ortuman/jackal/module"
@@ -177,25 +176,19 @@ func (a *Application) Run() error {
 		return err
 	}
 	// initialize router
-	var clusterRouter router.ClusterRouter
-	if a.cluster != nil {
-		var err error
-
-		clusterRouter, err = clusterrouter.New(a.cluster, a.storage.Presences)
-		if err != nil {
-			return err
-		}
-	}
 	var s2sRouter router.S2SRouter
 	if cfg.S2S != nil {
 		a.s2sOutProvider = s2s.NewOutProvider(cfg.S2S, hosts)
 		s2sRouter = s2srouter.New(a.s2sOutProvider)
 	}
+	c2sRouter, err := c2srouter.New(a.storage.User, a.storage.BlockList, a.storage.Presences, a.cluster)
+	if err != nil {
+		return err
+	}
 	a.router, err = router.New(
 		hosts,
-		c2srouter.New(a.storage.User, a.storage.BlockList),
+		c2sRouter,
 		s2sRouter,
-		clusterRouter,
 	)
 	if err != nil {
 		return err

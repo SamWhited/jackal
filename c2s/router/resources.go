@@ -9,7 +9,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/ortuman/jackal/router"
 	"github.com/ortuman/jackal/stream"
 	"github.com/ortuman/jackal/xmpp"
 )
@@ -69,42 +68,11 @@ func (r *resources) unbind(res string) {
 	}
 }
 
-func (r *resources) route(ctx context.Context, stanza xmpp.Stanza) error {
-	toJID := stanza.ToJID()
-	if toJID.IsFullWithUser() {
-		for _, stm := range r.streams {
-			if p := stm.Presence(); p != nil && p.IsAvailable() && stm.Resource() == toJID.Resource() {
-				stm.SendElement(ctx, stanza)
-				return nil
-			}
+func (r *resources) route(ctx context.Context, stanza xmpp.Stanza, resource string) {
+	for _, s := range r.streams {
+		if s.Resource() != resource {
+			continue
 		}
-		return router.ErrResourceNotFound
+		s.SendElement(ctx, stanza)
 	}
-	switch stanza.(type) {
-	case *xmpp.Message:
-		// send to highest priority stream
-		var highestPriority int8
-		var recipient stream.C2S
-
-		for _, stm := range r.streams {
-			if p := stm.Presence(); p != nil && p.IsAvailable() && p.Priority() > highestPriority {
-				recipient = stm
-				highestPriority = p.Priority()
-			}
-		}
-		if recipient == nil {
-			goto broadcast
-		}
-		recipient.SendElement(ctx, stanza)
-		return nil
-	}
-
-broadcast:
-	// broadcast toJID all streams
-	for _, stm := range r.streams {
-		if p := stm.Presence(); p != nil && p.IsAvailable() {
-			stm.SendElement(ctx, stanza)
-		}
-	}
-	return nil
 }
